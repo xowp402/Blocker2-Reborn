@@ -35,6 +35,7 @@ import com.blocker2.app.ui.ActiveBlocksScreen
 import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
 import com.blocker2.app.ui.WordRulesScreen
+import com.blocker2.app.ui.TelegramRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
 private enum class MainSection(val title: String, val subtitle: String) {
     HOME("خانه", "وضعیت کلی محافظت"),
     WORDS("واژه‌ها", "مدیریت واژه‌ها و عبارت‌ها"),
+    TELEGRAM("تلگرام", "فیلتر واژه‌ها و کانال‌های تلگرام"),
     SITES("سایت‌ها", "مدیریت دامنه‌ها و نشانی‌ها"),
     APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت"),
     BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده"),
@@ -143,6 +145,10 @@ private fun Blocker2App(
                             .database.wordRuleDao(),
                         appDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.monitoredAppDao()
+                    )
+                    MainSection.TELEGRAM -> TelegramRulesScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.telegramFilterRuleDao()
                     )
                     MainSection.SITES -> EmptySection(
                         title = "فیلتر سایت‌ها",
