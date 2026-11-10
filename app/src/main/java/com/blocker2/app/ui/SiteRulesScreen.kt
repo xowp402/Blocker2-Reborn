@@ -52,7 +52,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "در این نسخه، فیلتر DNS فقط قوانین «دامنه» و «دامنه و زیر‌دامنه‌ها» را اعمال می‌کند. قانون IP مستقیم و مسیر URL هنوز توسط این موتور اجرا نمی‌شوند؛ مسیر HTTPS قابل مشاهده نیست و DNS رمزگذاری‌شدهٔ بعضی برنامه‌ها می‌تواند از فیلتر عبور کند.",
+            "این موتور نام دامنه را در DNS روی UDP و IPv4/IPv6 بررسی می‌کند. قانون IP مستقیم و مسیر URL اجرا نمی‌شوند؛ مسیر HTTPS و DNS رمزگذاری‌شده قابل مشاهده نیستند. DNS روی TCP و بسته‌های IPv6 دارای Extension Header نیز هنوز پشتیبانی نمی‌شوند؛ در این حالت فیلتر سایت برای جلوگیری از قطع اینترنت خاموش می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
