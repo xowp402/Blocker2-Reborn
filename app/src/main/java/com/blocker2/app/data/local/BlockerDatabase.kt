@@ -6,12 +6,14 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.blocker2.app.data.local.dao.CommitmentSessionDao
 import com.blocker2.app.data.local.dao.ActivityLogDao
 import com.blocker2.app.data.local.dao.ActiveAppBlockDao
 import com.blocker2.app.data.local.dao.MonitoredAppDao
 import com.blocker2.app.data.local.dao.SiteRuleDao
 import com.blocker2.app.data.local.dao.TelegramFilterRuleDao
 import com.blocker2.app.data.local.dao.WordRuleDao
+import com.blocker2.app.data.local.entity.CommitmentSessionEntity
 import com.blocker2.app.data.local.entity.ActivityLogEntity
 import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
 import com.blocker2.app.data.local.entity.AllowedSiteEntity
@@ -28,9 +30,10 @@ import com.blocker2.app.data.local.entity.WordRuleEntity
         AllowedSiteEntity::class,
         MonitoredAppEntity::class,
         ActivityLogEntity::class,
-        ActiveAppBlockEntity::class
+        ActiveAppBlockEntity::class,
+        CommitmentSessionEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class BlockerDatabase : RoomDatabase() {
@@ -40,6 +43,7 @@ abstract class BlockerDatabase : RoomDatabase() {
     abstract fun monitoredAppDao(): MonitoredAppDao
     abstract fun activityLogDao(): ActivityLogDao
     abstract fun activeAppBlockDao(): ActiveAppBlockDao
+    abstract fun commitmentSessionDao(): CommitmentSessionDao
 
     companion object {
         private const val DATABASE_NAME = "blocker2_local.db"
@@ -48,6 +52,14 @@ abstract class BlockerDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("CREATE TABLE IF NOT EXISTS active_app_blocks (packageName TEXT NOT NULL PRIMARY KEY, sourceRuleId INTEGER, reason TEXT NOT NULL, createdAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL)")
                 database.execSQL("CREATE INDEX IF NOT EXISTS index_active_app_blocks_expiresAt ON active_app_blocks(expiresAt)")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS commitment_session (id INTEGER NOT NULL PRIMARY KEY, startedAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL)"
+                )
             }
         }
 
@@ -60,7 +72,7 @@ abstract class BlockerDatabase : RoomDatabase() {
                     context.applicationContext,
                     BlockerDatabase::class.java,
                     DATABASE_NAME
-                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
             }
     }
 }
