@@ -52,8 +52,17 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "قوانین این صفحه در حافظهٔ محلی ذخیره می‌شوند. اجرای مسدودسازی شبکه‌ای به موتور VPN محلی نیاز دارد و تا فعال‌شدن آن، این فهرست به‌تنهایی ترافیک را مسدود نمی‌کند.",
+            "در این نسخه، فیلتر DNS فقط قوانین «دامنه» و «دامنه و زیر‌دامنه‌ها» را اعمال می‌کند. قانون IP مستقیم و مسیر URL هنوز توسط این موتور اجرا نمی‌شوند؛ مسیر HTTPS قابل مشاهده نیست و DNS رمزگذاری‌شدهٔ بعضی برنامه‌ها می‌تواند از فیلتر عبور کند.",
             style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onStartVpn, modifier = Modifier.weight(1f)) { Text("فعال‌سازی فیلتر DNS") }
+            OutlinedButton(onClick = onStopVpn, modifier = Modifier.weight(1f)) { Text("توقف فیلتر") }
+        }
+        Text(
+            "درخواست‌های DNS غیرمسدود به سرور DNS بالادستی 1.1.1.1 فرستاده می‌شوند؛ ترافیک عادی وب از تونل عبور نمی‌کند.",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         TabRow(selectedTabIndex = selectedTab) {
