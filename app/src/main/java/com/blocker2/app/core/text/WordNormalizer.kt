@@ -18,12 +18,12 @@ object WordNormalizer {
             .replace(ARABIC_YEH, PERSIAN_YEH)
             .replace(ALEF_MAKSURA, PERSIAN_YEH)
             .replace(ARABIC_KAF, PERSIAN_KAF)
-            .replace(TATWEEL, "")
+            .replace(TATWEEL.toString(), "")
             .replace(DIACRITICS, "")
 
         return canonical
             .lowercase(Locale.ROOT)
-            .replace(ZERO_WIDTH_NON_JOINER, " ")
+            .replace(ZERO_WIDTH_NON_JOINER.toString(), " ")
             .replace(WHITESPACE, " ")
             .trim()
     }
