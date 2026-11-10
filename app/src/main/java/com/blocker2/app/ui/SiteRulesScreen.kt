@@ -61,7 +61,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
             OutlinedButton(onClick = onStopVpn, modifier = Modifier.weight(1f)) { Text("توقف فیلتر") }
         }
         Text(
-            "درخواست‌های DNS غیرمسدود به سرور DNS بالادستی 1.1.1.1 فرستاده می‌شوند؛ ترافیک عادی وب از تونل عبور نمی‌کند.",
+            "درخواست‌های DNS غیرمسدود ابتدا به 1.1.1.1 و در صورت خطا به 8.8.8.8 فرستاده می‌شوند؛ نام دامنه‌ها برای حل DNS به این سرویس‌ها ارسال می‌شود، اما ترافیک عادی وب از تونل عبور نمی‌کند.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
