@@ -20,6 +20,9 @@ interface MonitoredAppDao {
     @Query("UPDATE monitored_apps SET monitoringEnabled = :enabled, updatedAt = :timestamp WHERE packageName = :packageName")
     suspend fun setMonitoring(packageName: String, enabled: Boolean, timestamp: Long): Int
 
+    @Query("UPDATE monitored_apps SET detectionCount = detectionCount + 1, updatedAt = :timestamp WHERE packageName = :packageName")
+    suspend fun incrementDetectionCount(packageName: String, timestamp: Long): Int
+
     @Query("DELETE FROM monitored_apps WHERE packageName = :packageName")
     suspend fun delete(packageName: String): Int
 }
