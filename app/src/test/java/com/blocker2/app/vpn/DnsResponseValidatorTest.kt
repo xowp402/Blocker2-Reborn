@@ -38,6 +38,37 @@ class DnsResponseValidatorTest {
         assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
     }
 
+    @Test fun rejectsDifferentQuestionClass() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).also { it[it.lastIndex] = 3 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
+    @Test fun rejectsDifferentOpcode() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8980)
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
+    @Test fun rejectsCompressedOrMalformedQuestionName() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val compressed = dnsMessage("example.com", flags = 0x8180).also { it[12] = 0xc0.toByte() }
+        val malformed = dnsMessage("example.com", flags = 0x8180).also { it[12] = 0x40 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, compressed))
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, malformed))
+    }
+
+    @Test fun rejectsResponseWithMultipleQuestions() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).also { it[5] = 2 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
+    @Test fun rejectsShortAndEmptyPackets() {
+        assertFalse(DnsResponseValidator.isMatchingResponse(byteArrayOf(), byteArrayOf()))
+        assertFalse(DnsResponseValidator.isMatchingResponse(ByteArray(12), ByteArray(12)))
+    }
+
     private fun dnsMessage(host: String, flags: Int, type: Int = 1): ByteArray {
         val name = host.split(".").flatMap { label ->
             listOf(label.length.toByte()) + label.toByteArray(Charsets.US_ASCII).toList()
