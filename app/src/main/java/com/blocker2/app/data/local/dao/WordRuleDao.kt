@@ -21,7 +21,7 @@ interface WordRuleDao {
     suspend fun upsert(rule: WordRuleEntity): Long
 
     @Query("UPDATE word_rules SET enabled = :enabled, updatedAt = :updatedAt WHERE id = :id")
-    suspend fun setEnabled(id: Long, enabled: Boolean, updatedAt: Long = System.currentTimeMillis()): Int
+    suspend fun setEnabled(id: Long, enabled: Boolean, updatedAt: Long): Int
 
     @Query("UPDATE word_rules SET detectionCount = detectionCount + 1, updatedAt = :timestamp WHERE id = :id")
     suspend fun incrementDetectionCount(id: Long, timestamp: Long = System.currentTimeMillis()): Int
