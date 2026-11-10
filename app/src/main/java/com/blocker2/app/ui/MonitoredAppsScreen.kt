@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +39,19 @@ private data class InstalledLaunchableApp(
     val packageName: String,
     val label: String
 )
+
+private val appCategories = listOf(
+    "SOCIAL" to "شبکه‌های اجتماعی",
+    "GAMES" to "بازی‌ها",
+    "BROWSERS" to "مرورگرها",
+    "VIDEO" to "ویدئو",
+    "ENTERTAINMENT" to "سرگرمی",
+    "MESSAGING" to "پیام‌رسان‌ها",
+    "OTHER" to "سایر"
+)
+
+private fun categoryLabel(value: String): String =
+    appCategories.firstOrNull { it.first == value }?.second ?: "سایر"
 
 @Composable
 fun MonitoredAppsScreen(dao: MonitoredAppDao) {
@@ -120,6 +136,8 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                 items(filteredApps, key = { it.packageName }) { app ->
                     val saved = savedByPackage[app.packageName]
                     val enabled = saved?.monitoringEnabled == true
+                    var categoryMenuExpanded by remember(app.packageName) { mutableStateOf(false) }
+                    val category = saved?.category ?: "OTHER"
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier
@@ -135,6 +153,34 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                TextButton(onClick = { categoryMenuExpanded = true }) {
+                                    Text("گروه: ${categoryLabel(category)}")
+                                }
+                                DropdownMenu(
+                                    expanded = categoryMenuExpanded,
+                                    onDismissRequest = { categoryMenuExpanded = false }
+                                ) {
+                                    appCategories.forEach { (key, label) ->
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                categoryMenuExpanded = false
+                                                scope.launch {
+                                                    dao.upsert(
+                                                        MonitoredAppEntity(
+                                                            packageName = app.packageName,
+                                                            appName = app.label,
+                                                            category = key,
+                                                            monitoringEnabled = enabled,
+                                                            detectionCount = saved?.detectionCount ?: 0L,
+                                                            updatedAt = System.currentTimeMillis()
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
                             }
                             Switch(
                                 checked = enabled,
