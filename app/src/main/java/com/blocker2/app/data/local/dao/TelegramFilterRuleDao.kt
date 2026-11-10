@@ -18,7 +18,7 @@ interface TelegramFilterRuleDao {
     suspend fun upsert(rule: TelegramFilterRuleEntity): Long
 
     @Query("UPDATE telegram_filter_rules SET enabled = :enabled, updatedAt = :timestamp WHERE id = :id")
-    suspend fun setEnabled(id: Long, enabled: Boolean, timestamp: Long = System.currentTimeMillis()): Int
+    suspend fun setEnabled(id: Long, enabled: Boolean, timestamp: Long): Int
 
     @Query("UPDATE telegram_filter_rules SET detectionCount = detectionCount + 1, updatedAt = :timestamp WHERE id = :id")
     suspend fun incrementDetectionCount(id: Long, timestamp: Long = System.currentTimeMillis()): Int
