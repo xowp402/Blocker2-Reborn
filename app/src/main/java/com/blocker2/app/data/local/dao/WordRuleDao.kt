@@ -24,7 +24,7 @@ interface WordRuleDao {
     suspend fun setEnabled(id: Long, enabled: Boolean, updatedAt: Long): Int
 
     @Query("UPDATE word_rules SET detectionCount = detectionCount + 1, updatedAt = :timestamp WHERE id = :id")
-    suspend fun incrementDetectionCount(id: Long, timestamp: Long = System.currentTimeMillis()): Int
+    suspend fun incrementDetectionCount(id: Long, timestamp: Long): Int
 
     @Query("DELETE FROM word_rules WHERE id = :id")
     suspend fun deleteById(id: Long): Int
