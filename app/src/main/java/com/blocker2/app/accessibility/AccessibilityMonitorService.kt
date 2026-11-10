@@ -8,6 +8,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import com.blocker2.app.Blocker2Application
 import com.blocker2.app.core.text.RuleMatchMode
 import com.blocker2.app.core.text.RuleMatcher
+import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
 import com.blocker2.app.data.local.entity.ActivityLogEntity
 import com.blocker2.app.data.local.entity.WordRuleEntity
 import kotlinx.coroutines.CoroutineScope
@@ -16,16 +17,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Reads only the active window's exposed accessibility tree.
- *
- * It never stores the full screen text. Password nodes are skipped, the app itself
- * is excluded, and each match is written as a local activity record.
- */
 class AccessibilityMonitorService : AccessibilityService() {
-
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastMatchAt = ConcurrentHashMap<String, Long>()
     private var lastScanAt = 0L
@@ -44,10 +39,9 @@ class AccessibilityMonitorService : AccessibilityService() {
 
         val packageName = event.packageName?.toString() ?: return
         if (packageName == applicationContext.packageName) return
-
-        val now = SystemClock.elapsedRealtime()
-        if (now - lastScanAt < MIN_SCAN_INTERVAL_MS) return
-        lastScanAt = now
+        val elapsed = SystemClock.elapsedRealtime()
+        if (elapsed - lastScanAt < MIN_SCAN_INTERVAL_MS) return
+        lastScanAt = elapsed
 
         val root = rootInActiveWindow ?: return
         val visibleText = try {
@@ -61,37 +55,65 @@ class AccessibilityMonitorService : AccessibilityService() {
         if (visibleText.isBlank()) return
 
         serviceScope.launch {
-            try {
-                processSnapshot(packageName, visibleText)
-            } catch (error: Exception) {
-                Log.e(TAG, "Accessibility snapshot processing failed", error)
-            }
+            try { processSnapshot(packageName, visibleText) }
+            catch (error: Exception) { Log.e(TAG, "Accessibility snapshot processing failed", error) }
         }
     }
 
     private suspend fun processSnapshot(packageName: String, visibleText: String) {
-        val app = blockerApplication()
-        val monitoredApps = app.database.monitoredAppDao().observeMonitored().first()
-        val monitored = monitoredApps.firstOrNull { it.packageName == packageName } ?: return
-
-        val rules = app.wordRules.observeEnabled().first()
+        val app = application as Blocker2Application
         val now = System.currentTimeMillis()
+        val blockDao = app.database.activeAppBlockDao()
+        blockDao.deleteExpired(now)
 
-        rules.forEach { rule ->
-            if (!isRuleTargetedAt(rule, packageName)) return@forEach
+        if (blockDao.findActive(packageName, now) != null) {
+            withContext(Dispatchers.Main) {
+                if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                    Log.w(TAG, "Could not return home while enforcing timed block")
+                }
+            }
+            return
+        }
+
+        val monitored = app.database.monitoredAppDao().observeMonitored().first()
+            .firstOrNull { it.packageName == packageName } ?: return
+        val rules = app.wordRules.observeEnabled().first()
+        var shouldExit = false
+        var timedBlockCreated = false
+
+        for (rule in rules) {
+            if (!isRuleTargetedAt(rule, packageName)) continue
             val mode = runCatching { RuleMatchMode.valueOf(rule.matchMode) }
                 .getOrDefault(RuleMatchMode.NORMALIZED_WORD)
-
-            if (!RuleMatcher.matches(visibleText, rule.text, mode)) return@forEach
+            if (!RuleMatcher.matches(visibleText, rule.text, mode)) continue
 
             val matchKey = "$packageName:${rule.id}"
             val previous = lastMatchAt[matchKey] ?: 0L
-            if (now - previous < MATCH_COOLDOWN_MS) return@forEach
+            if (now - previous < MATCH_COOLDOWN_MS) continue
             lastMatchAt[matchKey] = now
 
-            if (rule.statisticsEnabled) {
-                app.wordRules.recordDetection(rule.id)
+            val reaction = rule.reaction.uppercase()
+            val requiresExit = reaction == REACTION_WARN_AND_EXIT ||
+                reaction == REACTION_EXIT_ONLY || reaction == REACTION_TEMPORARY_BLOCK
+            if (requiresExit) shouldExit = true
+
+            val startsTimedBlock = !timedBlockCreated &&
+                (reaction == REACTION_WARN_AND_EXIT || reaction == REACTION_TEMPORARY_BLOCK) &&
+                rule.blockDurationMillis > 0L
+            if (startsTimedBlock) {
+                blockDao.upsert(
+                    ActiveAppBlockEntity(
+                        packageName = packageName,
+                        sourceRuleId = rule.id,
+                        reason = rule.customWarning?.takeIf { it.isNotBlank() } ?: rule.text,
+                        createdAt = now,
+                        expiresAt = now + rule.blockDurationMillis
+                    )
+                )
+                timedBlockCreated = true
             }
+
+            if (rule.statisticsEnabled) app.wordRules.recordDetection(rule.id)
             app.database.activityLogDao().insert(
                 ActivityLogEntity(
                     occurredAt = now,
@@ -101,19 +123,30 @@ class AccessibilityMonitorService : AccessibilityService() {
                     ruleId = rule.id,
                     matchedValue = rule.text,
                     reaction = rule.reaction,
-                    durationMillis = rule.blockDurationMillis,
-                    outcome = "DETECTED"
+                    durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
+                    outcome = when {
+                        reaction == REACTION_LOG_ONLY -> "DETECTED"
+                        reaction == REACTION_EXIT_ONLY -> "EXIT_REQUESTED"
+                        startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
+                        requiresExit -> "EXIT_REQUESTED"
+                        else -> "DETECTED"
+                    }
                 )
             )
             Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
         }
+
+        if (shouldExit) {
+            withContext(Dispatchers.Main) {
+                if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                    Log.w(TAG, "Android rejected the HOME global action")
+                }
+            }
+        }
     }
 
     private fun isRuleTargetedAt(rule: WordRuleEntity, packageName: String): Boolean {
-        val configured = rule.targetPackages
-            .split('|')
-            .map(String::trim)
-            .filter(String::isNotEmpty)
+        val configured = rule.targetPackages.split("|").map(String::trim).filter(String::isNotEmpty)
         return configured.isEmpty() || packageName in configured
     }
 
@@ -122,21 +155,14 @@ class AccessibilityMonitorService : AccessibilityService() {
         val stack = ArrayDeque<AccessibilityNodeInfo>()
         stack.add(root)
         var visited = 0
-
         while (stack.isNotEmpty() && visited < MAX_NODES && result.length < MAX_TEXT_LENGTH) {
             val node = stack.removeLast()
             visited++
-
             try {
                 if (!node.isPassword) {
-                    node.text?.toString()
-                        ?.takeIf(String::isNotBlank)
-                        ?.let { result.append(it).append(' ') }
-                    node.contentDescription?.toString()
-                        ?.takeIf(String::isNotBlank)
-                        ?.let { result.append(it).append(' ') }
+                    node.text?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
+                    node.contentDescription?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
                 }
-
                 for (index in 0 until node.childCount) {
                     if (visited + stack.size >= MAX_NODES) break
                     val child = node.getChild(index) ?: continue
@@ -151,12 +177,7 @@ class AccessibilityMonitorService : AccessibilityService() {
         return result.toString().take(MAX_TEXT_LENGTH)
     }
 
-    private fun blockerApplication(): Blocker2Application =
-        application as Blocker2Application
-
-    override fun onInterrupt() {
-        Log.w(TAG, "Accessibility monitoring interrupted by the system")
-    }
+    override fun onInterrupt() { Log.w(TAG, "Accessibility monitoring interrupted by the system") }
 
     override fun onDestroy() {
         serviceScope.cancel()
@@ -170,5 +191,9 @@ class AccessibilityMonitorService : AccessibilityService() {
         private const val MATCH_COOLDOWN_MS = 2_000L
         private const val MAX_NODES = 500
         private const val MAX_TEXT_LENGTH = 12_000
+        private const val REACTION_WARN_AND_EXIT = "WARN_AND_EXIT"
+        private const val REACTION_EXIT_ONLY = "EXIT_ONLY"
+        private const val REACTION_TEMPORARY_BLOCK = "TEMPORARY_BLOCK"
+        private const val REACTION_LOG_ONLY = "LOG_ONLY"
     }
 }
