@@ -153,6 +153,11 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Text(
+                                    "تعداد تشخیص‌ها: ${saved?.detectionCount ?: 0L}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                                 TextButton(onClick = { categoryMenuExpanded = true }) {
                                     Text("گروه: ${categoryLabel(category)}")
                                 }
