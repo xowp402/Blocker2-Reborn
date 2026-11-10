@@ -9,7 +9,6 @@ import com.blocker2.app.Blocker2Application
 import com.blocker2.app.core.text.RuleMatchMode
 import com.blocker2.app.core.text.RuleMatcher
 import com.blocker2.app.data.local.entity.ActivityLogEntity
-import com.blocker2.app.data.local.entity.MonitoredAppEntity
 import com.blocker2.app.data.local.entity.WordRuleEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +16,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -29,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 class AccessibilityMonitorService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val lastMatchAt = ConcurrentHashMap<Long, Long>()
+    private val lastMatchAt = ConcurrentHashMap<String, Long>()
     private var lastScanAt = 0L
 
     override fun onServiceConnected() {
@@ -86,9 +84,10 @@ class AccessibilityMonitorService : AccessibilityService() {
 
             if (!RuleMatcher.matches(visibleText, rule.text, mode)) return@forEach
 
-            val previous = lastMatchAt[rule.id] ?: 0L
+            val matchKey = "$packageName:${rule.id}"
+            val previous = lastMatchAt[matchKey] ?: 0L
             if (now - previous < MATCH_COOLDOWN_MS) return@forEach
-            lastMatchAt[rule.id] = now
+            lastMatchAt[matchKey] = now
 
             if (rule.statisticsEnabled) {
                 app.wordRules.recordDetection(rule.id)
