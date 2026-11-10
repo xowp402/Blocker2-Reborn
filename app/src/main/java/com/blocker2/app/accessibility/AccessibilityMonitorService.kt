@@ -1,0 +1,175 @@
+package com.blocker2.app.accessibility
+
+import android.accessibilityservice.AccessibilityService
+import android.os.SystemClock
+import android.util.Log
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import com.blocker2.app.Blocker2Application
+import com.blocker2.app.core.text.RuleMatchMode
+import com.blocker2.app.core.text.RuleMatcher
+import com.blocker2.app.data.local.entity.ActivityLogEntity
+import com.blocker2.app.data.local.entity.MonitoredAppEntity
+import com.blocker2.app.data.local.entity.WordRuleEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Reads only the active window's exposed accessibility tree.
+ *
+ * It never stores the full screen text. Password nodes are skipped, the app itself
+ * is excluded, and each match is written as a local activity record.
+ */
+class AccessibilityMonitorService : AccessibilityService() {
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val lastMatchAt = ConcurrentHashMap<Long, Long>()
+    private var lastScanAt = 0L
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        Log.i(TAG, "Accessibility monitoring connected")
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event == null) return
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
+            event.eventType != AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
+        ) return
+
+        val packageName = event.packageName?.toString() ?: return
+        if (packageName == applicationContext.packageName) return
+
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastScanAt < MIN_SCAN_INTERVAL_MS) return
+        lastScanAt = now
+
+        val root = rootInActiveWindow ?: return
+        val visibleText = try {
+            collectVisibleText(root)
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "Could not traverse active accessibility tree", error)
+            return
+        } finally {
+            root.recycle()
+        }
+        if (visibleText.isBlank()) return
+
+        serviceScope.launch {
+            try {
+                processSnapshot(packageName, visibleText)
+            } catch (error: Exception) {
+                Log.e(TAG, "Accessibility snapshot processing failed", error)
+            }
+        }
+    }
+
+    private suspend fun processSnapshot(packageName: String, visibleText: String) {
+        val app = blockerApplication()
+        val monitoredApps = app.database.monitoredAppDao().observeMonitored().first()
+        val monitored = monitoredApps.firstOrNull { it.packageName == packageName } ?: return
+
+        val rules = app.wordRules.observeEnabled().first()
+        val now = System.currentTimeMillis()
+
+        rules.forEach { rule ->
+            if (!isRuleTargetedAt(rule, packageName)) return@forEach
+            val mode = runCatching { RuleMatchMode.valueOf(rule.matchMode) }
+                .getOrDefault(RuleMatchMode.NORMALIZED_WORD)
+
+            if (!RuleMatcher.matches(visibleText, rule.text, mode)) return@forEach
+
+            val previous = lastMatchAt[rule.id] ?: 0L
+            if (now - previous < MATCH_COOLDOWN_MS) return@forEach
+            lastMatchAt[rule.id] = now
+
+            if (rule.statisticsEnabled) {
+                app.wordRules.recordDetection(rule.id)
+            }
+            app.database.activityLogDao().insert(
+                ActivityLogEntity(
+                    occurredAt = now,
+                    sourcePackage = packageName,
+                    sourceLabel = monitored.appName,
+                    ruleType = "WORD",
+                    ruleId = rule.id,
+                    matchedValue = rule.text,
+                    reaction = rule.reaction,
+                    durationMillis = rule.blockDurationMillis,
+                    outcome = "DETECTED"
+                )
+            )
+            Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
+        }
+    }
+
+    private fun isRuleTargetedAt(rule: WordRuleEntity, packageName: String): Boolean {
+        val configured = rule.targetPackages
+            .split('|')
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+        return configured.isEmpty() || packageName in configured
+    }
+
+    private fun collectVisibleText(root: AccessibilityNodeInfo): String {
+        val result = StringBuilder()
+        val stack = ArrayDeque<AccessibilityNodeInfo>()
+        stack.add(root)
+        var visited = 0
+
+        while (stack.isNotEmpty() && visited < MAX_NODES && result.length < MAX_TEXT_LENGTH) {
+            val node = stack.removeLast()
+            visited++
+
+            try {
+                if (!node.isPassword) {
+                    node.text?.toString()
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { result.append(it).append(' ') }
+                    node.contentDescription?.toString()
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { result.append(it).append(' ') }
+                }
+
+                for (index in 0 until node.childCount) {
+                    if (visited + stack.size >= MAX_NODES) break
+                    val child = node.getChild(index) ?: continue
+                    stack.add(child)
+                }
+            } catch (error: RuntimeException) {
+                Log.d(TAG, "Skipped an inaccessible accessibility node", error)
+            } finally {
+                if (node !== root) node.recycle()
+            }
+        }
+        return result.toString().take(MAX_TEXT_LENGTH)
+    }
+
+    private fun blockerApplication(): Blocker2Application =
+        application as Blocker2Application
+
+    override fun onInterrupt() {
+        Log.w(TAG, "Accessibility monitoring interrupted by the system")
+    }
+
+    override fun onDestroy() {
+        serviceScope.cancel()
+        lastMatchAt.clear()
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "Blocker2.Accessibility"
+        private const val MIN_SCAN_INTERVAL_MS = 350L
+        private const val MATCH_COOLDOWN_MS = 2_000L
+        private const val MAX_NODES = 500
+        private const val MAX_TEXT_LENGTH = 12_000
+    }
+}
