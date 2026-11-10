@@ -224,7 +224,7 @@ private fun HomeOverview(
         )
         StatusCard(
             title = "فیلتر سایت‌ها",
-            status = "هنوز راه‌اندازی نشده"
+            status = "موتور DNS آمادهٔ راه‌اندازی از صفحهٔ سایت‌ها"
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
@@ -255,7 +255,7 @@ private fun HomeOverview(
         }
         StatusCard(
             title = "اتصال VPN محلی",
-            status = "نیازمند پیاده‌سازی و مجوز"
+            status = "برای شروع، مجوز VPN را در صفحهٔ سایت‌ها تأیید کنید"
         )
         Spacer(modifier = Modifier.padding(2.dp))
         Text(
