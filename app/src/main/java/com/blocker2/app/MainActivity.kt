@@ -73,7 +73,10 @@ private enum class MainSection(val title: String, val subtitle: String) {
 }
 
 @androidx.compose.runtime.Composable
-private fun Blocker2App(\n    showNotificationPermissionButton: Boolean,\n    onRequestNotifications: () -> Unit\n) {
+private fun Blocker2App(
+    showNotificationPermissionButton: Boolean,
+    onRequestNotifications: () -> Unit
+) {
     var selectedSection by remember { mutableIntStateOf(0) }
     val sections = MainSection.entries
 
@@ -159,7 +162,10 @@ private fun Blocker2App(\n    showNotificationPermissionButton: Boolean,\n    on
 }
 
 @androidx.compose.runtime.Composable
-private fun HomeOverview(\n    showNotificationPermissionButton: Boolean,\n    onRequestNotifications: () -> Unit\n) {
+private fun HomeOverview(
+    showNotificationPermissionButton: Boolean,
+    onRequestNotifications: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusCard(
             title = "فیلتر واژه‌ها",
