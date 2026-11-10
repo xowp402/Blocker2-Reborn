@@ -120,6 +120,7 @@ class AccessibilityMonitorService : AccessibilityService() {
             }
 
             if (rule.statisticsEnabled) app.wordRules.recordDetection(rule.id)
+            app.database.monitoredAppDao().incrementDetectionCount(packageName, now)
             app.database.activityLogDao().insert(
                 ActivityLogEntity(
                     occurredAt = now,
