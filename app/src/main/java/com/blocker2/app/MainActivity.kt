@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.blocker2.app.ui.ActiveBlocksScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
@@ -69,7 +70,8 @@ private enum class MainSection(val title: String, val subtitle: String) {
     HOME("خانه", "وضعیت کلی محافظت"),
     WORDS("واژه‌ها", "مدیریت واژه‌ها و عبارت‌ها"),
     SITES("سایت‌ها", "مدیریت دامنه‌ها و نشانی‌ها"),
-    APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت")
+    APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت"),
+    BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده")
 }
 
 @androidx.compose.runtime.Composable
@@ -143,6 +145,10 @@ private fun Blocker2App(
                     MainSection.APPS -> EmptySection(
                         title = "برنامه‌های تحت نظارت",
                         description = "در این بخش می‌توان برنامه‌های موردنظر را برای پایش انتخاب کرد و Blocker2 را مستثنا نگه داشت."
+                    )
+                    MainSection.BLOCKS -> ActiveBlocksScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.activeAppBlockDao()
                     )
                 }
             }
