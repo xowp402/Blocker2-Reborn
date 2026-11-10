@@ -54,6 +54,13 @@ android {
     }
 }
 
+kapt {
+    correctErrorTypes = true
+    arguments {
+        arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
 dependencies {
     val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
