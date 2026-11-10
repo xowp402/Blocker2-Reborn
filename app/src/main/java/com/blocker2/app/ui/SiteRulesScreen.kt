@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun SiteRulesScreen(dao: SiteRuleDao) {
+fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> Unit) {
     val blocked by dao.observeBlockedSites().collectAsState(initial = emptyList())
     val allowed by dao.observeAllowedSites().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
