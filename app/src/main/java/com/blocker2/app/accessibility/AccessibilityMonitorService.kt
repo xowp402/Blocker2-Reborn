@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 class AccessibilityMonitorService : AccessibilityService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lastMatchAt = ConcurrentHashMap<String, Long>()
+    private val lastCommitmentEnforcementAt = ConcurrentHashMap<String, Long>()
     private var lastScanAt = 0L
 
     override fun onServiceConnected() {
@@ -78,6 +79,35 @@ class AccessibilityMonitorService : AccessibilityService() {
 
         val monitored = app.database.monitoredAppDao().observeMonitored().first()
             .firstOrNull { it.packageName == packageName } ?: return
+
+        val commitment = app.database.commitmentSessionDao().getSession()
+        if (commitment != null && commitment.expiresAt > now) {
+            val previousEnforcement = lastCommitmentEnforcementAt[packageName] ?: 0L
+            if (now - previousEnforcement >= COMMITMENT_ENFORCEMENT_COOLDOWN_MS) {
+                lastCommitmentEnforcementAt[packageName] = now
+                app.database.activityLogDao().insert(
+                    ActivityLogEntity(
+                        occurredAt = now,
+                        sourcePackage = packageName,
+                        sourceLabel = monitored.appName,
+                        ruleType = "COMMITMENT",
+                        matchedValue = "Personal commitment session",
+                        reaction = "EXIT_ONLY",
+                        durationMillis = (commitment.expiresAt - now).coerceAtLeast(0L),
+                        outcome = "COMMITMENT_ENFORCED"
+                    )
+                )
+                withContext(Dispatchers.Main) {
+                    if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                        Log.w(TAG, "Android rejected HOME action during commitment mode")
+                    }
+                }
+            }
+            return
+        }
+        if (commitment != null && commitment.expiresAt <= now) {
+            app.database.commitmentSessionDao().endSession()
+        }
         val rules = app.wordRules.observeEnabled().first()
         var shouldExit = false
         var timedBlockCreated = false
@@ -268,6 +298,7 @@ class AccessibilityMonitorService : AccessibilityService() {
     override fun onDestroy() {
         serviceScope.cancel()
         lastMatchAt.clear()
+        lastCommitmentEnforcementAt.clear()
         super.onDestroy()
     }
 
@@ -275,6 +306,7 @@ class AccessibilityMonitorService : AccessibilityService() {
         private const val TAG = "Blocker2.Accessibility"
         private const val MIN_SCAN_INTERVAL_MS = 350L
         private const val MATCH_COOLDOWN_MS = 2_000L
+        private const val COMMITMENT_ENFORCEMENT_COOLDOWN_MS = 5_000L
         private const val MAX_NODES = 500
         private const val MAX_TEXT_LENGTH = 12_000
         private const val REACTION_WARN_AND_EXIT = "WARN_AND_EXIT"
