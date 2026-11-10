@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 import com.blocker2.app.ui.ActiveBlocksScreen
 import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
+import com.blocker2.app.ui.WordRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
@@ -137,9 +138,11 @@ private fun Blocker2App(
 
                 when (sections[selectedSection]) {
                     MainSection.HOME -> HomeOverview(showNotificationPermissionButton, onRequestNotifications)
-                    MainSection.WORDS -> EmptySection(
-                        title = "مدیریت واژه‌ها",
-                        description = "در این بخش قوانین واژه و عبارت، زبان، برنامه‌های هدف و واکنش هر قانون پیاده‌سازی می‌شوند."
+                    MainSection.WORDS -> WordRulesScreen(
+                        wordDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.wordRuleDao(),
+                        appDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.monitoredAppDao()
                     )
                     MainSection.SITES -> EmptySection(
                         title = "فیلتر سایت‌ها",
