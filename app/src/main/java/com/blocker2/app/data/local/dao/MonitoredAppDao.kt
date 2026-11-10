@@ -18,7 +18,7 @@ interface MonitoredAppDao {
     suspend fun upsert(app: MonitoredAppEntity)
 
     @Query("UPDATE monitored_apps SET monitoringEnabled = :enabled, updatedAt = :timestamp WHERE packageName = :packageName")
-    suspend fun setMonitoring(packageName: String, enabled: Boolean, timestamp: Long = System.currentTimeMillis()): Int
+    suspend fun setMonitoring(packageName: String, enabled: Boolean, timestamp: Long): Int
 
     @Query("DELETE FROM monitored_apps WHERE packageName = :packageName")
     suspend fun delete(packageName: String): Int
