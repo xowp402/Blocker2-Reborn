@@ -115,7 +115,14 @@ class LocalDnsVpnService : VpnService() {
                     val length = input.read(packetBuffer)
                     if (length <= 0) continue
                     val request = packetBuffer.copyOf(length)
-                    val parsed = parseDnsPacket(request) ?: continue
+                    val parsed = parseDnsPacket(request)
+                    if (parsed == null) {
+                        // Do not silently drop unsupported DNS transports (for example TCP/53).
+                        // Release the VPN so Android can fall back to its regular resolver.
+                        android.util.Log.w(TAG, "Unsupported DNS packet; disabling site filter safely")
+                        stopVpn()
+                        break
+                    }
                     val decision = SiteRuleMatcher.evaluate(
                         parsed.hostname,
                         blockedRules,
