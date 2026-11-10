@@ -75,6 +75,9 @@ class LocalDnsVpnService : VpnService() {
             .addAddress(TUN_ADDRESS, 32)
             .addDnsServer(DNS_ADDRESS)
             .addRoute(DNS_ADDRESS, 32)
+            .addAddress(TUN_IPV6_ADDRESS, 128)
+            .addDnsServer(DNS_IPV6_ADDRESS)
+            .addRoute(DNS_IPV6_ADDRESS, 128)
             .establish()
         checkNotNull(descriptor) { "Android did not create the VPN interface." }
         tunnel = descriptor
@@ -131,12 +134,9 @@ class LocalDnsVpnService : VpnService() {
                         break
                     }
 
-                    val responsePacket = buildIpv4UdpResponse(
+                    val responsePacket = buildUdpResponse(
+                        parsed = parsed,
                         request = request,
-                        sourceAddress = parsed.destinationAddress,
-                        destinationAddress = parsed.sourceAddress,
-                        sourcePort = parsed.destinationPort,
-                        destinationPort = parsed.sourcePort,
                         payload = dnsResponse
                     )
                     output.write(responsePacket)
@@ -229,16 +229,27 @@ class LocalDnsVpnService : VpnService() {
     }
 
     private data class ParsedDnsPacket(
+        val ipVersion: Int,
         val sourceAddress: ByteArray,
         val destinationAddress: ByteArray,
         val sourcePort: Int,
         val destinationPort: Int,
+        val identification: Int,
         val dnsPayload: ByteArray,
         val hostname: String
     )
 
     private fun parseDnsPacket(packet: ByteArray): ParsedDnsPacket? {
-        if (packet.size < 28 || (packet[0].toInt() ushr 4 and 0x0f) != 4) return null
+        if (packet.isEmpty()) return null
+        return when ((packet[0].toInt() ushr 4) and 0x0f) {
+            4 -> parseIpv4DnsPacket(packet)
+            6 -> parseIpv6DnsPacket(packet)
+            else -> null
+        }
+    }
+
+    private fun parseIpv4DnsPacket(packet: ByteArray): ParsedDnsPacket? {
+        if (packet.size < 28) return null
         val ipHeaderLength = (packet[0].toInt() and 0x0f) * 4
         if (ipHeaderLength < 20 || packet.size < ipHeaderLength + 8) return null
         if ((packet[9].toInt() and 0xff) != IPPROTO_UDP) return null
@@ -251,10 +262,37 @@ class LocalDnsVpnService : VpnService() {
         val dns = packet.copyOfRange(dnsStart, ipHeaderLength + udpLength)
         val hostname = readQuestionName(dns) ?: return null
         return ParsedDnsPacket(
+            ipVersion = 4,
             sourceAddress = packet.copyOfRange(12, 16),
             destinationAddress = packet.copyOfRange(16, 20),
             sourcePort = sourcePort,
             destinationPort = destinationPort,
+            identification = readU16(packet, 4),
+            dnsPayload = dns,
+            hostname = hostname
+        )
+    }
+
+    private fun parseIpv6DnsPacket(packet: ByteArray): ParsedDnsPacket? {
+        // This implementation intentionally accepts only the base IPv6 header
+        // with UDP as its immediate next-header. Extension headers are not parsed.
+        if (packet.size < 48 || (packet[6].toInt() and 0xff) != IPPROTO_UDP) return null
+        val payloadLength = readU16(packet, 4)
+        if (payloadLength < 8 || packet.size < 40 + payloadLength) return null
+        val sourcePort = readU16(packet, 40)
+        val destinationPort = readU16(packet, 42)
+        if (destinationPort != DNS_PORT) return null
+        val udpLength = readU16(packet, 44)
+        if (udpLength < 8 || udpLength > payloadLength) return null
+        val dns = packet.copyOfRange(48, 40 + udpLength)
+        val hostname = readQuestionName(dns) ?: return null
+        return ParsedDnsPacket(
+            ipVersion = 6,
+            sourceAddress = packet.copyOfRange(8, 24),
+            destinationAddress = packet.copyOfRange(24, 40),
+            sourcePort = sourcePort,
+            destinationPort = destinationPort,
+            identification = 0,
             dnsPayload = dns,
             hostname = hostname
         )
@@ -265,11 +303,16 @@ class LocalDnsVpnService : VpnService() {
         val labels = ArrayList<String>()
         var offset = 12
         var jumps = 0
+        var consumedEnd = -1
         while (offset < dns.size) {
             val size = dns[offset].toInt() and 0xff
-            if (size == 0) return labels.joinToString(".")
+            if (size == 0) {
+                if (consumedEnd < 0) consumedEnd = offset + 1
+                return if (consumedEnd + 4 <= dns.size) labels.joinToString(".") else null
+            }
             if ((size and 0xc0) == 0xc0) {
                 if (offset + 1 >= dns.size || jumps++ > 8) return null
+                if (consumedEnd < 0) consumedEnd = offset + 2
                 offset = ((size and 0x3f) shl 8) or (dns[offset + 1].toInt() and 0xff)
                 continue
             }
@@ -305,34 +348,91 @@ class LocalDnsVpnService : VpnService() {
         return response
     }
 
-    private fun buildIpv4UdpResponse(
+    private fun buildUdpResponse(
+        parsed: ParsedDnsPacket,
         request: ByteArray,
-        sourceAddress: ByteArray,
-        destinationAddress: ByteArray,
-        sourcePort: Int,
-        destinationPort: Int,
+        payload: ByteArray
+    ): ByteArray = if (parsed.ipVersion == 6) {
+        buildIpv6UdpResponse(parsed, payload)
+    } else {
+        buildIpv4UdpResponse(parsed, request, payload)
+    }
+
+    private fun buildIpv4UdpResponse(
+        parsed: ParsedDnsPacket,
+        request: ByteArray,
         payload: ByteArray
     ): ByteArray {
         val ipLength = 20
         val udpLength = 8 + payload.size
-        val totalLength = ipLength + udpLength
-        val result = ByteArray(totalLength)
+        val result = ByteArray(ipLength + udpLength)
         result[0] = 0x45
-        result[1] = 0
-        writeU16(result, 2, totalLength)
-        writeU16(result, 4, readU16(request, 4))
+        writeU16(result, 2, result.size)
+        writeU16(result, 4, parsed.identification)
         writeU16(result, 6, 0x4000)
         result[8] = 64
         result[9] = IPPROTO_UDP.toByte()
-        System.arraycopy(sourceAddress, 0, result, 12, 4)
-        System.arraycopy(destinationAddress, 0, result, 16, 4)
+        System.arraycopy(parsed.destinationAddress, 0, result, 12, 4)
+        System.arraycopy(parsed.sourceAddress, 0, result, 16, 4)
         writeU16(result, 10, checksum(result, 0, ipLength))
-        writeU16(result, ipLength, sourcePort)
-        writeU16(result, ipLength + 2, destinationPort)
+        writeU16(result, ipLength, parsed.destinationPort)
+        writeU16(result, ipLength + 2, parsed.sourcePort)
         writeU16(result, ipLength + 4, udpLength)
-        writeU16(result, ipLength + 6, 0) // UDP checksum is optional for IPv4.
+        writeU16(result, ipLength + 6, 0)
         System.arraycopy(payload, 0, result, ipLength + 8, payload.size)
         return result
+    }
+
+    private fun buildIpv6UdpResponse(parsed: ParsedDnsPacket, payload: ByteArray): ByteArray {
+        val udpLength = 8 + payload.size
+        val result = ByteArray(40 + udpLength)
+        result[0] = 0x60
+        writeU16(result, 4, udpLength)
+        result[6] = IPPROTO_UDP.toByte()
+        result[7] = 64
+        System.arraycopy(parsed.destinationAddress, 0, result, 8, 16)
+        System.arraycopy(parsed.sourceAddress, 0, result, 24, 16)
+        writeU16(result, 40, parsed.destinationPort)
+        writeU16(result, 42, parsed.sourcePort)
+        writeU16(result, 44, udpLength)
+        writeU16(result, 46, 0)
+        System.arraycopy(payload, 0, result, 48, payload.size)
+        val udpChecksum = ipv6UdpChecksum(
+            source = parsed.destinationAddress,
+            destination = parsed.sourceAddress,
+            udpPacket = result,
+            udpOffset = 40,
+            udpLength = udpLength
+        )
+        writeU16(result, 46, if (udpChecksum == 0) 0xffff else udpChecksum)
+        return result
+    }
+
+    private fun ipv6UdpChecksum(
+        source: ByteArray,
+        destination: ByteArray,
+        udpPacket: ByteArray,
+        udpOffset: Int,
+        udpLength: Int
+    ): Int {
+        var sum = 0L
+        fun addBytes(bytes: ByteArray, start: Int = 0, length: Int = bytes.size) {
+            var i = start
+            val end = start + length
+            while (i + 1 < end) {
+                sum += (((bytes[i].toInt() and 0xff) shl 8) or (bytes[i + 1].toInt() and 0xff)).toLong()
+                i += 2
+            }
+            if (i < end) sum += ((bytes[i].toInt() and 0xff) shl 8).toLong()
+        }
+        addBytes(source)
+        addBytes(destination)
+        sum += ((udpLength ushr 16) and 0xffff).toLong()
+        sum += (udpLength and 0xffff).toLong()
+        sum += IPPROTO_UDP.toLong()
+        addBytes(udpPacket, udpOffset, udpLength)
+        while ((sum ushr 16) != 0L) sum = (sum and 0xffff) + (sum ushr 16)
+        return sum.inv().toInt() and 0xffff
     }
 
     private fun checksum(data: ByteArray, start: Int, length: Int): Int {
@@ -364,6 +464,8 @@ class LocalDnsVpnService : VpnService() {
         private const val NOTIFICATION_ID = 2402
         private const val TUN_ADDRESS = "10.111.0.1"
         private const val DNS_ADDRESS = "10.111.0.2"
+        private const val TUN_IPV6_ADDRESS = "fd11:111::1"
+        private const val DNS_IPV6_ADDRESS = "fd11:111::2"
         private const val UPSTREAM_DNS = "1.1.1.1"
         private const val DNS_PORT = 53
         private const val IPPROTO_UDP = 17
