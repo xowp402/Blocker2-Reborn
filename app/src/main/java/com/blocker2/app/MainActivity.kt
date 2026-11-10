@@ -36,6 +36,7 @@ import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
 import com.blocker2.app.ui.WordRulesScreen
 import com.blocker2.app.ui.TelegramRulesScreen
+import com.blocker2.app.ui.SiteRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
@@ -150,9 +151,9 @@ private fun Blocker2App(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.telegramFilterRuleDao()
                     )
-                    MainSection.SITES -> EmptySection(
-                        title = "فیلتر سایت‌ها",
-                        description = "در این بخش قوانین دامنه، زیر دامنه، IP و فهرست مجاز مدیریت خواهند شد."
+                    MainSection.SITES -> SiteRulesScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.siteRuleDao()
                     )
                     MainSection.APPS -> MonitoredAppsScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
