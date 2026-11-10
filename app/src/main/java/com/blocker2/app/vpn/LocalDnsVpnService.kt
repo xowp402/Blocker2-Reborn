@@ -174,14 +174,16 @@ class LocalDnsVpnService : VpnService() {
                     val responseBuffer = ByteArray(4096)
                     val response = DatagramPacket(responseBuffer, responseBuffer.size)
                     socket.receive(response)
+                    val responseBytes = response.data.copyOfRange(
+                        response.offset,
+                        response.offset + response.length
+                    )
                     if (response.address != server || response.port != DNS_PORT ||
-                        response.length < 12 ||
-                        readU16(response.data, response.offset) != readU16(query, 0) ||
-                        (readU16(response.data, response.offset + 2) and 0x8000) == 0
+                        !DnsResponseValidator.isMatchingResponse(query, responseBytes)
                     ) {
                         null
                     } else {
-                        response.data.copyOfRange(response.offset, response.offset + response.length)
+                        responseBytes
                     }
                 }
                 if (responseBytes != null) return responseBytes
