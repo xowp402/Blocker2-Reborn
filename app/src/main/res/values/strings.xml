@@ -2,4 +2,6 @@
 <resources>
     <string name="app_name">Blocker2</string>
     <string name="app_tagline">کنترل آگاهانه، تمرکز بیشتر</string>
+    <string name="accessibility_service_label">پایش واژه‌های Blocker2</string>
+    <string name="accessibility_service_description">با اجازهٔ شما، متن قابل‌مشاهدهٔ برنامه‌های انتخاب‌شده را برای یافتن واژه‌های فیلترشده بررسی می‌کند. متن کامل صفحه ذخیره نمی‌شود و فیلدهای رمز عبور نادیده گرفته می‌شوند.</string>
 </resources>
