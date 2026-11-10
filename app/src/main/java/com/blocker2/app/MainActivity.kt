@@ -24,6 +24,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -125,6 +126,10 @@ private fun Blocker2App(
     onStopVpn: () -> Unit
 ) {
     var selectedSection by remember { mutableIntStateOf(0) }
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application
+    val commitmentSession by appContext.database.commitmentSessionDao()
+        .observeSession().collectAsState(initial = null)
+    val commitmentActive = commitmentSession?.expiresAt?.let { it > System.currentTimeMillis() } == true
     val sections = MainSection.entries
 
     Surface(
@@ -195,10 +200,30 @@ private fun Blocker2App(
                         onStartVpn = onStartVpn,
                         onStopVpn = onStopVpn
                     )
-                    MainSection.APPS -> MonitoredAppsScreen(
-                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.monitoredAppDao()
-                    )
+                    MainSection.APPS -> {
+                        if (commitmentActive) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 2.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(18.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("تنظیمات برنامه‌ها موقتاً قفل است", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "تا پایان حالت تعهد نمی‌توانی فهرست برنامه‌های تحت نظارت یا دسته‌بندی آن‌ها را تغییر بدهی. برای خروج زودهنگام، فقط از بخش «تعهد» و فرایند خروج اضطراری استفاده کن.",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            MonitoredAppsScreen(dao = appContext.database.monitoredAppDao())
+                        }
+                    }
                     MainSection.BLOCKS -> ActiveBlocksScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.activeAppBlockDao()
@@ -218,6 +243,7 @@ private fun Blocker2App(
                 sections.forEachIndexed { index, section ->
                     NavigationBarItem(
                         selected = selectedSection == index,
+                        enabled = selectedSection == index || !(commitmentActive && section == MainSection.APPS),
                         onClick = { selectedSection = index },
                         icon = {},
                         label = { Text(section.title) }
