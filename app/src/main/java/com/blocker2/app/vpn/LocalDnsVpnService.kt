@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -54,8 +55,7 @@ class LocalDnsVpnService : VpnService() {
         if (!running.get()) {
             try {
                 establishTunnel()
-                observeRules()
-                startPacketLoop()
+                loadRulesAndStartPacketLoop()
             } catch (error: Exception) {
                 android.util.Log.e(TAG, "Unable to establish local DNS VPN", error)
                 stopVpn()
@@ -81,17 +81,23 @@ class LocalDnsVpnService : VpnService() {
         running.set(true)
     }
 
-    private fun observeRules() {
+    private fun loadRulesAndStartPacketLoop() {
         val dao = (application as Blocker2Application).database.siteRuleDao()
         serviceScope.launch {
-            combine(
-                dao.observeEnabledBlockedSites(),
-                dao.observeAllowedSites()
-            ) { blocked, allowed -> blocked to allowed }
-                .collect { (blocked, allowed) ->
-                    blockedRules = blocked
-                    allowedRules = allowed
-                }
+            // Load the persisted snapshot before accepting the first DNS query.
+            blockedRules = dao.observeEnabledBlockedSites().first()
+            allowedRules = dao.observeAllowedSites().first()
+            launch {
+                combine(
+                    dao.observeEnabledBlockedSites(),
+                    dao.observeAllowedSites()
+                ) { blocked, allowed -> blocked to allowed }
+                    .collect { (blocked, allowed) ->
+                        blockedRules = blocked
+                        allowedRules = allowed
+                    }
+            }
+            startPacketLoop()
         }
     }
 
