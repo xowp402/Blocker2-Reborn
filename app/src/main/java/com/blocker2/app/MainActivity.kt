@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.blocker2.app.ui.ActiveBlocksScreen
+import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
@@ -72,7 +73,8 @@ private enum class MainSection(val title: String, val subtitle: String) {
     WORDS("واژه‌ها", "مدیریت واژه‌ها و عبارت‌ها"),
     SITES("سایت‌ها", "مدیریت دامنه‌ها و نشانی‌ها"),
     APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت"),
-    BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده")
+    BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده"),
+    ACTIVITY("گزارش‌ها", "تاریخچهٔ شناسایی‌ها و واکنش‌ها")
 }
 
 @androidx.compose.runtime.Composable
@@ -150,6 +152,10 @@ private fun Blocker2App(
                     MainSection.BLOCKS -> ActiveBlocksScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.activeAppBlockDao()
+                    )
+                    MainSection.ACTIVITY -> ActivityLogScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.activityLogDao()
                     )
                 }
             }
