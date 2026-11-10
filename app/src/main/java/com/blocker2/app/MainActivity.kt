@@ -42,6 +42,7 @@ import com.blocker2.app.ui.TelegramRulesScreen
 import com.blocker2.app.ui.SiteRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 import com.blocker2.app.vpn.LocalDnsVpnService
+import com.blocker2.app.startup.StartupPreferences
 
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
@@ -53,12 +54,20 @@ class MainActivity : ComponentActivity() {
 
     private val vpnPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) startLocalDnsVpn()
+            if (result.resultCode == RESULT_OK) {
+                StartupPreferences.setAutoStartSiteFilter(this, true)
+                startLocalDnsVpn()
+            }
         }
 
     private fun requestLocalDnsVpn() {
         val permissionIntent = VpnService.prepare(this)
-        if (permissionIntent == null) startLocalDnsVpn() else vpnPermissionLauncher.launch(permissionIntent)
+        if (permissionIntent == null) {
+            StartupPreferences.setAutoStartSiteFilter(this, true)
+            startLocalDnsVpn()
+        } else {
+            vpnPermissionLauncher.launch(permissionIntent)
+        }
     }
 
     private fun startLocalDnsVpn() {
@@ -67,6 +76,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun stopLocalDnsVpn() {
+        StartupPreferences.setAutoStartSiteFilter(this, false)
         stopService(Intent(this, LocalDnsVpnService::class.java))
     }
 
