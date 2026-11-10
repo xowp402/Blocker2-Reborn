@@ -75,6 +75,11 @@ object BlockNotificationManager {
         manager.notify(NOTIFICATION_ID_BASE + packageName.hashCode().and(0x7fff), notification)
     }
 
+    fun cancelTimedBlock(context: Context, packageName: String) {
+        NotificationManagerCompat.from(context)
+            .cancel(NOTIFICATION_ID_BASE + packageName.hashCode().and(0x7fff))
+    }
+
     private fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
