@@ -163,23 +163,33 @@ class LocalDnsVpnService : VpnService() {
     }
 
     private fun forwardDns(query: ByteArray): ByteArray? {
-        return try {
-            DatagramSocket().use { socket ->
-                if (!protect(socket)) return null
-                socket.soTimeout = UPSTREAM_TIMEOUT_MS
-                val server = InetAddress.getByName(UPSTREAM_DNS)
-                socket.send(DatagramPacket(query, query.size, server, DNS_PORT))
-                val responseBuffer = ByteArray(4096)
-                val response = DatagramPacket(responseBuffer, responseBuffer.size)
-                socket.receive(response)
-                response.data.copyOf(response.length)
+        if (query.size < 12) return null
+        for (upstream in UPSTREAM_DNS_SERVERS) {
+            try {
+                val responseBytes = DatagramSocket().use { socket ->
+                    if (!protect(socket)) return null
+                    socket.soTimeout = UPSTREAM_TIMEOUT_MS
+                    val server = InetAddress.getByName(upstream)
+                    socket.send(DatagramPacket(query, query.size, server, DNS_PORT))
+                    val responseBuffer = ByteArray(4096)
+                    val response = DatagramPacket(responseBuffer, responseBuffer.size)
+                    socket.receive(response)
+                    if (response.address != server || response.port != DNS_PORT ||
+                        response.length < 12 ||
+                        readU16(response.data, response.offset) != readU16(query, 0) ||
+                        (readU16(response.data, response.offset + 2) and 0x8000) == 0
+                    ) {
+                        null
+                    } else {
+                        response.data.copyOfRange(response.offset, response.offset + response.length)
+                    }
+                }
+                if (responseBytes != null) return responseBytes
+            } catch (error: Exception) {
+                android.util.Log.w(TAG, "DNS upstream $upstream failed", error)
             }
-        } catch (_: SocketTimeoutException) {
-            null
-        } catch (error: Exception) {
-            android.util.Log.w(TAG, "Upstream DNS request failed", error)
-            null
         }
+        return null
     }
 
     private fun buildNotification(): Notification {
@@ -473,7 +483,7 @@ class LocalDnsVpnService : VpnService() {
         private const val DNS_ADDRESS = "10.111.0.2"
         private const val TUN_IPV6_ADDRESS = "fd11:111::1"
         private const val DNS_IPV6_ADDRESS = "fd11:111::2"
-        private const val UPSTREAM_DNS = "1.1.1.1"
+        private val UPSTREAM_DNS_SERVERS = arrayOf("1.1.1.1", "8.8.8.8")
         private const val DNS_PORT = 53
         private const val IPPROTO_UDP = 17
         private const val UPSTREAM_TIMEOUT_MS = 3000
