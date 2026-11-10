@@ -2,6 +2,8 @@ package com.blocker2.app
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
+import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -38,6 +40,7 @@ import com.blocker2.app.ui.WordRulesScreen
 import com.blocker2.app.ui.TelegramRulesScreen
 import com.blocker2.app.ui.SiteRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
+import com.blocker2.app.vpn.LocalDnsVpnService
 
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
@@ -46,6 +49,25 @@ class MainActivity : ComponentActivity() {
                 android.util.Log.i("Blocker2", "Notification permission was not granted")
             }
         }
+
+    private val vpnPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) startLocalDnsVpn()
+        }
+
+    private fun requestLocalDnsVpn() {
+        val permissionIntent = VpnService.prepare(this)
+        if (permissionIntent == null) startLocalDnsVpn() else vpnPermissionLauncher.launch(permissionIntent)
+    }
+
+    private fun startLocalDnsVpn() {
+        val intent = Intent(this, LocalDnsVpnService::class.java).setAction(LocalDnsVpnService.ACTION_START)
+        ContextCompat.startForegroundService(this, intent)
+    }
+
+    private fun stopLocalDnsVpn() {
+        stopService(Intent(this, LocalDnsVpnService::class.java))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
