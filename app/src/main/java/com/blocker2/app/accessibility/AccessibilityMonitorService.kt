@@ -111,6 +111,12 @@ class AccessibilityMonitorService : AccessibilityService() {
                     )
                 )
                 timedBlockCreated = true
+                BlockNotificationManager.showTimedBlock(
+                    context = this@AccessibilityMonitorService,
+                    packageName = packageName,
+                    expiresAt = now + rule.blockDurationMillis,
+                    currentTimeMillis = now
+                )
             }
 
             if (rule.statisticsEnabled) app.wordRules.recordDetection(rule.id)
