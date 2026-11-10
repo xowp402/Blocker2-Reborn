@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.blocker2.app.ui.ActiveBlocksScreen
+import com.blocker2.app.ui.MonitoredAppsScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
@@ -142,9 +143,9 @@ private fun Blocker2App(
                         title = "فیلتر سایت‌ها",
                         description = "در این بخش قوانین دامنه، زیر دامنه، IP و فهرست مجاز مدیریت خواهند شد."
                     )
-                    MainSection.APPS -> EmptySection(
-                        title = "برنامه‌های تحت نظارت",
-                        description = "در این بخش می‌توان برنامه‌های موردنظر را برای پایش انتخاب کرد و Blocker2 را مستثنا نگه داشت."
+                    MainSection.APPS -> MonitoredAppsScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.monitoredAppDao()
                     )
                     MainSection.BLOCKS -> ActiveBlocksScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
