@@ -122,7 +122,14 @@ class LocalDnsVpnService : VpnService() {
                         buildNxDomain(parsed.dnsPayload)
                     } else {
                         forwardDns(parsed.dnsPayload)
-                    } ?: continue
+                    }
+                    if (dnsResponse == null) {
+                        // Fail open: disable the site VPN so Android can resume its normal DNS.
+                        // Word filtering runs in a separate Accessibility service and is unaffected.
+                        android.util.Log.e(TAG, "DNS upstream failed; disabling site filter")
+                        stopVpn()
+                        break
+                    }
 
                     val responsePacket = buildIpv4UdpResponse(
                         request = request,
