@@ -86,7 +86,9 @@ class MainActivity : ComponentActivity() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                    }
+                    },
+                    onStartVpn = { requestLocalDnsVpn() },
+                    onStopVpn = { stopLocalDnsVpn() }
                 )
             }
         }
@@ -106,7 +108,9 @@ private enum class MainSection(val title: String, val subtitle: String) {
 @androidx.compose.runtime.Composable
 private fun Blocker2App(
     showNotificationPermissionButton: Boolean,
-    onRequestNotifications: () -> Unit
+    onRequestNotifications: () -> Unit,
+    onStartVpn: () -> Unit,
+    onStopVpn: () -> Unit
 ) {
     var selectedSection by remember { mutableIntStateOf(0) }
     val sections = MainSection.entries
@@ -175,7 +179,9 @@ private fun Blocker2App(
                     )
                     MainSection.SITES -> SiteRulesScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.siteRuleDao()
+                            .database.siteRuleDao(),
+                        onStartVpn = onStartVpn,
+                        onStopVpn = onStopVpn
                     )
                     MainSection.APPS -> MonitoredAppsScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
