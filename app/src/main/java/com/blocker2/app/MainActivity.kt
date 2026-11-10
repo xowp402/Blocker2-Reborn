@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.blocker2.app.ui.CommitmentScreen
 import com.blocker2.app.ui.ActiveBlocksScreen
 import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
@@ -102,7 +103,8 @@ private enum class MainSection(val title: String, val subtitle: String) {
     SITES("سایت‌ها", "مدیریت دامنه‌ها و نشانی‌ها"),
     APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت"),
     BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده"),
-    ACTIVITY("گزارش‌ها", "تاریخچهٔ شناسایی‌ها و واکنش‌ها")
+    ACTIVITY("گزارش‌ها", "تاریخچهٔ شناسایی‌ها و واکنش‌ها"),
+    COMMITMENT("تعهد", "حالت تعهد شخصی و خروج اضطراری")
 }
 
 @androidx.compose.runtime.Composable
@@ -194,6 +196,10 @@ private fun Blocker2App(
                     MainSection.ACTIVITY -> ActivityLogScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.activityLogDao()
+                    )
+                    MainSection.COMMITMENT -> CommitmentScreen(
+                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
+                            .database.commitmentSessionDao()
                     )
                 }
             }
