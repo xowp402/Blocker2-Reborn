@@ -19,7 +19,7 @@ interface SiteRuleDao {
     suspend fun upsertBlockedSite(rule: SiteRuleEntity): Long
 
     @Query("UPDATE site_rules SET enabled = :enabled, updatedAt = :timestamp WHERE id = :id")
-    suspend fun setBlockedSiteEnabled(id: Long, enabled: Boolean, timestamp: Long = System.currentTimeMillis()): Int
+    suspend fun setBlockedSiteEnabled(id: Long, enabled: Boolean, timestamp: Long): Int
 
     @Query("DELETE FROM site_rules WHERE id = :id")
     suspend fun deleteBlockedSite(id: Long): Int
