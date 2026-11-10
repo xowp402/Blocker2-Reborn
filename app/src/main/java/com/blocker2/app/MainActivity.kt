@@ -1,8 +1,12 @@
 package com.blocker2.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,14 +30,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.blocker2.app.ui.theme.Blocker2Theme
 
 class MainActivity : ComponentActivity() {
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) {
+                android.util.Log.i("Blocker2", "Notification permission was not granted")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val needsNotificationPermission =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+
         setContent {
             Blocker2Theme {
-                Blocker2App()
+                Blocker2App(
+                    showNotificationPermissionButton = needsNotificationPermission,
+                    onRequestNotifications = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                )
             }
         }
     }
@@ -46,7 +73,7 @@ private enum class MainSection(val title: String, val subtitle: String) {
 }
 
 @androidx.compose.runtime.Composable
-private fun Blocker2App() {
+private fun Blocker2App(\n    showNotificationPermissionButton: Boolean,\n    onRequestNotifications: () -> Unit\n) {
     var selectedSection by remember { mutableIntStateOf(0) }
     val sections = MainSection.entries
 
@@ -101,7 +128,7 @@ private fun Blocker2App() {
                 )
 
                 when (sections[selectedSection]) {
-                    MainSection.HOME -> HomeOverview()
+                    MainSection.HOME -> HomeOverview(showNotificationPermissionButton, onRequestNotifications)
                     MainSection.WORDS -> EmptySection(
                         title = "مدیریت واژه‌ها",
                         description = "در این بخش قوانین واژه و عبارت، زبان، برنامه‌های هدف و واکنش هر قانون پیاده‌سازی می‌شوند."
@@ -132,7 +159,7 @@ private fun Blocker2App() {
 }
 
 @androidx.compose.runtime.Composable
-private fun HomeOverview() {
+private fun HomeOverview(\n    showNotificationPermissionButton: Boolean,\n    onRequestNotifications: () -> Unit\n) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusCard(
             title = "فیلتر واژه‌ها",
@@ -144,8 +171,31 @@ private fun HomeOverview() {
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
-            status = "نیازمند پیاده‌سازی و مجوز"
+            status = "نیازمند فعال‌سازی مجوز در تنظیمات اندروید"
         )
+        if (showNotificationPermissionButton) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("اجازهٔ اعلان‌ها", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "برای نمایش هشدار هنگام شروع مسدودسازی زمان‌دار، اجازهٔ اعلان‌ها را فعال کنید. مسدودسازی حتی بدون این اجازه نیز اجرا می‌شود.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(onClick = onRequestNotifications) {
+                        Text("فعال‌کردن اعلان‌ها")
+                    }
+                }
+            }
+        }
         StatusCard(
             title = "اتصال VPN محلی",
             status = "نیازمند پیاده‌سازی و مجوز"
