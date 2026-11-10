@@ -45,16 +45,19 @@ class AccessibilityMonitorService : AccessibilityService() {
         if (elapsed - lastScanAt < MIN_SCAN_INTERVAL_MS) return
         lastScanAt = elapsed
 
-        val root = rootInActiveWindow ?: return
-        val visibleText = try {
-            collectVisibleText(root)
-        } catch (error: RuntimeException) {
-            Log.w(TAG, "Could not traverse active accessibility tree", error)
-            return
-        } finally {
-            root.recycle()
+        val root = rootInActiveWindow
+        val visibleText = if (root == null) {
+            ""
+        } else {
+            try {
+                collectVisibleText(root)
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Could not traverse active accessibility tree", error)
+                ""
+            } finally {
+                root.recycle()
+            }
         }
-        if (visibleText.isBlank()) return
 
         serviceScope.launch {
             try { processSnapshot(packageName, visibleText) }
@@ -306,7 +309,7 @@ class AccessibilityMonitorService : AccessibilityService() {
         private const val TAG = "Blocker2.Accessibility"
         private const val MIN_SCAN_INTERVAL_MS = 350L
         private const val MATCH_COOLDOWN_MS = 2_000L
-        private const val COMMITMENT_ENFORCEMENT_COOLDOWN_MS = 5_000L
+        private const val COMMITMENT_ENFORCEMENT_COOLDOWN_MS = 1_000L
         private const val MAX_NODES = 500
         private const val MAX_TEXT_LENGTH = 12_000
         private const val REACTION_WARN_AND_EXIT = "WARN_AND_EXIT"
