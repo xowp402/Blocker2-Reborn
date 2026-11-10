@@ -13,7 +13,7 @@ interface ActivityLogDao {
     suspend fun insert(entry: ActivityLogEntity): Long
 
     @Query("SELECT * FROM activity_logs ORDER BY occurredAt DESC LIMIT :limit")
-    fun observeRecent(limit: Int = 100): Flow<List<ActivityLogEntity>>
+    fun observeRecent(limit: Int): Flow<List<ActivityLogEntity>>
 
     @Query("SELECT COUNT(*) FROM activity_logs WHERE occurredAt >= :startOfDay")
     fun observeCountSince(startOfDay: Long): Flow<Int>
