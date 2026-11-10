@@ -12,7 +12,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.blocker2.app.MainActivity
-import com.blocker2.app.R
 
 /**
  * Shows a privacy-preserving notification when an app receives a timed block.
@@ -56,7 +55,7 @@ object BlockNotificationManager {
 
         val minutes = ((remainingMillis + 59_999L) / 60_000L).coerceAtLeast(1L)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle("Blocker2؛ برنامه موقتاً مسدود شد")
             .setContentText("برای حفظ تمرکز، دسترسی به این برنامه محدود شده است.")
             .setStyle(
