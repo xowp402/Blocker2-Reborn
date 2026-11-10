@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.blocker2.app.accessibility.BlockNotificationManager
 import com.blocker2.app.data.local.dao.ActiveAppBlockDao
 import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
 import kotlinx.coroutines.delay
@@ -75,15 +76,26 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
                 now = now,
                 onExtend = {
                     scope.launch {
-                        dao.extendActive(
+                        val newExpiry = block.expiresAt + EXTENSION_MILLIS
+                        val updated = dao.extendActive(
                             packageName = block.packageName,
-                            newExpiresAt = block.expiresAt + EXTENSION_MILLIS,
+                            newExpiresAt = newExpiry,
                             now = System.currentTimeMillis()
                         )
+                        if (updated > 0) {
+                            BlockNotificationManager.showTimedBlock(
+                                context = context,
+                                packageName = block.packageName,
+                                expiresAt = newExpiry
+                            )
+                        }
                     }
                 },
                 onClear = {
-                    scope.launch { dao.clearForPackage(block.packageName) }
+                    scope.launch {
+                        dao.clearForPackage(block.packageName)
+                        BlockNotificationManager.cancelTimedBlock(context, block.packageName)
+                    }
                 }
             )
         }
