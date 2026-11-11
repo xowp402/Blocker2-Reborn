@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.net.DatagramPacket
@@ -38,7 +39,19 @@ import java.util.concurrent.atomic.AtomicBoolean
  * the TUN interface; ordinary app traffic is not routed through this service.
  */
 class LocalDnsVpnService : VpnService() {
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var serviceScope = newServiceScope()
+
+    private fun newServiceScope(): CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** Recreate the scope if Android restarts this still-live service instance. */
+    @Synchronized
+    private fun activeServiceScope(): CoroutineScope {
+        if (!serviceScope.coroutineContext.isActive) {
+            serviceScope = newServiceScope()
+        }
+        return serviceScope
+    }
     private val running = AtomicBoolean(false)
 
     @Volatile private var blockedRules: List<SiteRuleEntity> = emptyList()
@@ -91,7 +104,7 @@ class LocalDnsVpnService : VpnService() {
 
     private fun loadRulesAndStartPacketLoop() {
         val dao = (application as Blocker2Application).database.siteRuleDao()
-        serviceScope.launch {
+        activeServiceScope().launch {
             // Load the persisted snapshot before accepting the first DNS query.
             blockedRules = dao.observeEnabledBlockedSites().first()
             allowedRules = dao.observeAllowedSites().first()
@@ -112,10 +125,11 @@ class LocalDnsVpnService : VpnService() {
         }
     }
 
+    @Synchronized
     private fun startPacketLoop() {
-        if (!running.get()) return
+        if (!running.get() || worker?.isAlive == true) return
         val descriptor = tunnel ?: return
-        worker = Thread({
+        val packetWorker = Thread({
             var input: FileInputStream? = null
             var output: FileOutputStream? = null
             val packetBuffer = ByteArray(32767)
@@ -172,12 +186,14 @@ class LocalDnsVpnService : VpnService() {
                 try { output?.close() } catch (error: Exception) {
                     android.util.Log.w(TAG, "Error closing DNS output stream", error)
                 }
+                if (worker === Thread.currentThread()) worker = null
                 if (running.get()) stopVpn()
             }
         }, "Blocker2-DNS-TUN").apply {
             isDaemon = true
-            start()
         }
+        worker = packetWorker
+        packetWorker.start()
     }
 
     private fun forwardDns(query: ByteArray): ByteArray? {
