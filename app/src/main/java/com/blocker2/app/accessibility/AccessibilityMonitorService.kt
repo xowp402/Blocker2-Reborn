@@ -8,7 +8,6 @@ import android.view.accessibility.AccessibilityNodeInfo
 import com.blocker2.app.Blocker2Application
 import com.blocker2.app.core.text.RuleMatchMode
 import com.blocker2.app.core.text.RuleMatcher
-import com.blocker2.app.core.text.WordNormalizer
 import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
 import com.blocker2.app.data.local.entity.ActivityLogEntity
 import com.blocker2.app.data.local.entity.WordRuleEntity
@@ -211,18 +210,9 @@ class AccessibilityMonitorService : AccessibilityService() {
         }
 
         if (isTelegramPackage(packageName)) {
-            val normalizedSnapshot = WordNormalizer.normalize(visibleText)
             val telegramRules = app.telegramRules.observeEnabled().first()
             for (rule in telegramRules) {
-                val normalizedRule = rule.normalizedValue
-                val matched = when (rule.ruleType.uppercase()) {
-                    "WORD" -> RuleMatcher.matches(visibleText, rule.value, RuleMatchMode.NORMALIZED_WORD)
-                    "PHRASE" -> normalizedSnapshot.contains(normalizedRule)
-                    "CHANNEL_URL", "CHANNEL_ID", "USERNAME" ->
-                        normalizedRule.isNotBlank() && normalizedSnapshot.contains(normalizedRule)
-                    else -> false
-                }
-                if (!matched) continue
+                if (!TelegramRuleMatcher.matches(visibleText, rule.ruleType, rule.value)) continue
 
                 val matchKey = packageName + ":telegram:" + rule.id
                 if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
