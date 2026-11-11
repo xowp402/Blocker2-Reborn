@@ -31,10 +31,23 @@ object RuleMatcher {
     }
 
     private fun hasBoundedOccurrence(content: String, rule: String): Boolean {
-        val pattern = Regex(
-            "(?<![\\p{L}\\p{N}])${Regex.escape(rule)}(?![\\p{L}\\p{N}])"
-        )
-        return pattern.containsMatchIn(content)
+        // Avoid compiling a new regular expression for every rule on every scan.
+        // Code-point checks also keep supplementary Unicode letters/numbers inside words.
+        var searchFrom = 0
+        while (searchFrom <= content.length - rule.length) {
+            val index = content.indexOf(rule, searchFrom)
+            if (index < 0) return false
+
+            val end = index + rule.length
+            val leftIsBoundary = index == 0 ||
+                !Character.isLetterOrDigit(content.codePointBefore(index))
+            val rightIsBoundary = end == content.length ||
+                !Character.isLetterOrDigit(content.codePointAt(end))
+
+            if (leftIsBoundary && rightIsBoundary) return true
+            searchFrom = index + 1
+        }
+        return false
     }
 
     private fun containsWhitespace(value: String): Boolean = value.any(Char::isWhitespace)

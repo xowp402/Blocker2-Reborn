@@ -59,6 +59,30 @@ class RuleMatcherTest {
     }
 
     @Test
+    fun phraseModeTreatsSupplementaryUnicodeLettersAsPartOfWords() {
+        val supplementaryLetter = String(Character.toChars(0x10400))
+        assertFalse(
+            RuleMatcher.matches(
+                "${supplementaryLetter}سلام",
+                "سلام",
+                RuleMatchMode.PHRASE
+            )
+        )
+        assertFalse(
+            RuleMatcher.matches(
+                "سلام${supplementaryLetter}",
+                "سلام",
+                RuleMatchMode.PHRASE
+            )
+        )
+    }
+
+    @Test
+    fun phraseModeAllowsEmojiAsWordBoundary() {
+        assertTrue(RuleMatcher.matches("🙂سلام🙂", "سلام", RuleMatchMode.PHRASE))
+    }
+
+    @Test
     fun phraseModeMatchesCaseInsensitiveEnglishText() {
         assertTrue(RuleMatcher.matches("Open YouTube NOW", "open youtube", RuleMatchMode.PHRASE))
     }
