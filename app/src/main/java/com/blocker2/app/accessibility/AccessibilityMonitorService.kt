@@ -12,6 +12,7 @@ import com.blocker2.app.core.text.WordNormalizer
 import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
 import com.blocker2.app.data.local.entity.ActivityLogEntity
 import com.blocker2.app.data.local.entity.WordRuleEntity
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -74,17 +75,21 @@ class AccessibilityMonitorService : AccessibilityService() {
             val processingJob = serviceScope.launch {
                 try {
                     processSnapshot(packageName, visibleText)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
                 } catch (error: Exception) {
                     Log.e(TAG, "Accessibility snapshot processing failed", error)
                 }
             }
+            // Transfer ownership before registering: an already-cancelled job may
+            // invoke its completion handler immediately.
+            handedOffToCoroutine = true
             processingJob.invokeOnCompletion { cause ->
-                if (cause != null) {
+                if (cause != null && cause !is CancellationException) {
                     Log.w(TAG, "Accessibility snapshot job completed exceptionally", cause)
                 }
                 processingGate.release()
             }
-            handedOffToCoroutine = true
         } finally {
             if (!handedOffToCoroutine) processingGate.release()
         }
