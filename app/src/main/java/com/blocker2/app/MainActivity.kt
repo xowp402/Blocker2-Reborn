@@ -159,7 +159,11 @@ private fun Blocker2App(
         .observeSession().collectAsState(initial = null)
     val commitmentActive = commitmentSession?.expiresAt?.let { it > System.currentTimeMillis() } == true
     val accessibilityConnected by AccessibilityMonitorService.connectionState.collectAsState()
+    val dnsVpnConnected by LocalDnsVpnService.connectionState.collectAsState()
     val monitoredApps by appContext.database.monitoredAppDao().observeMonitored().collectAsState(initial = emptyList())
+    val enabledWordRules by appContext.database.wordRuleDao().observeEnabled().collectAsState(initial = emptyList())
+    val enabledTelegramRules by appContext.database.telegramFilterRuleDao().observeEnabled().collectAsState(initial = emptyList())
+    val enabledSiteRules by appContext.database.siteRuleDao().observeEnabledBlockedSites().collectAsState(initial = emptyList())
     val enabledMonitoredAppCount = monitoredApps.count { it.monitoringEnabled }
     val sections = MainSection.entries
 
@@ -219,6 +223,10 @@ private fun Blocker2App(
                         accessibilityPermissionEnabled = accessibilityPermissionEnabled,
                         accessibilityConnected = accessibilityConnected,
                         enabledMonitoredAppCount = enabledMonitoredAppCount,
+                        enabledWordRuleCount = enabledWordRules.size,
+                        enabledTelegramRuleCount = enabledTelegramRules.size,
+                        enabledSiteRuleCount = enabledSiteRules.size,
+                        dnsVpnConnected = dnsVpnConnected,
                         onRequestNotifications = onRequestNotifications,
                         onOpenAccessibilitySettings = onOpenAccessibilitySettings
                     )
@@ -298,17 +306,25 @@ private fun HomeOverview(
     accessibilityPermissionEnabled: Boolean,
     accessibilityConnected: Boolean,
     enabledMonitoredAppCount: Int,
+    enabledWordRuleCount: Int,
+    enabledTelegramRuleCount: Int,
+    enabledSiteRuleCount: Int,
+    dnsVpnConnected: Boolean,
     onRequestNotifications: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusCard(
-            title = "فیلتر واژه‌ها",
-            status = "برای شروع، سرویس دسترس‌پذیری را فعال و برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن."
+            title = "قوانین فعال واژه‌ها",
+            status = "$enabledWordRuleCount قانون واژه‌ای فعال است. اجرای آن به اتصال سرویس دسترس‌پذیری و انتخاب برنامه‌های هدف وابسته است."
         )
         StatusCard(
-            title = "فیلتر سایت‌ها",
-            status = "موتور DNS آمادهٔ راه‌اندازی از صفحهٔ سایت‌ها"
+            title = "قوانین فعال تلگرام",
+            status = "$enabledTelegramRuleCount قانون تلگرام فعال است؛ شناسایی فقط بر اساس متن قابل مشاهده برای Accessibility انجام می‌شود."
+        )
+        StatusCard(
+            title = "قوانین مسدودسازی سایت",
+            status = "$enabledSiteRuleCount قانون مسدودسازی سایت فعال است. اجرای آن به اتصال VPN محلی وابسته است."
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
@@ -350,7 +366,7 @@ private fun HomeOverview(
         }
         StatusCard(
             title = "اتصال VPN محلی",
-            status = "برای شروع، مجوز VPN را در صفحهٔ سایت‌ها تأیید کنید"
+            status = if (dnsVpnConnected) "تونل DNS محلی برقرار است." else "تونل DNS محلی متصل نیست؛ قوانین سایت در حال حاضر اعمال نمی‌شوند."
         )
         Spacer(modifier = Modifier.padding(2.dp))
         Text(
