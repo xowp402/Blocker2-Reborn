@@ -107,7 +107,9 @@ internal object DnsResponseValidator {
      * Skips a possibly compressed DNS name. Compression pointers must refer
      * backward into the DNS message, as required by the DNS wire format.
      */
-    private data class NameInfo(val nextOffset: Int, val isUncompressedRoot: Boolean)\n\n    private fun skipName(packet: ByteArray, start: Int): NameInfo? {
+    private data class NameInfo(val nextOffset: Int, val isUncompressedRoot: Boolean)
+
+    private fun skipName(packet: ByteArray, start: Int): NameInfo? {
         if (start !in packet.indices) return null
         var offset = start
         var nextOffset: Int? = null
@@ -120,7 +122,10 @@ internal object DnsResponseValidator {
                 length == 0 -> {
                     expandedLength++
                     if (expandedLength > MAX_NAME_LENGTH) return null
-                    return NameInfo(\n                        nextOffset ?: (offset + 1),\n                        isUncompressedRoot = offset == start && offset == start && packet[start] == 0.toByte()\n                    )
+                    return NameInfo(
+                        nextOffset ?: (offset + 1),
+                        isUncompressedRoot = offset == start && packet[start] == 0.toByte()
+                    )
                 }
                 (length and 0xc0) == 0xc0 -> {
                     if (offset + 1 >= packet.size) return null
@@ -172,7 +177,10 @@ internal object DnsResponseValidator {
 
     private const val DNS_HEADER_SIZE = 12
     private const val QUESTION_TAIL_SIZE = 4
-    private const val RESOURCE_RECORD_FIXED_BYTES = 10\n    private const val MINIMUM_RECORD_BYTES = 11\n    private const val EDNS_OPTION_HEADER_BYTES = 4\n    private const val OPT_TYPE = 41
+    private const val RESOURCE_RECORD_FIXED_BYTES = 10
+    private const val MINIMUM_RECORD_BYTES = 11
+    private const val EDNS_OPTION_HEADER_BYTES = 4
+    private const val OPT_TYPE = 41
     private const val MAX_LABEL_LENGTH = 63
     private const val MAX_NAME_LENGTH = 255
     private const val QR_MASK = 0x8000
