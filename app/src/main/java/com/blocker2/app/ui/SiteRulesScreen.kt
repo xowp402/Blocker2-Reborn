@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.blocker2.app.core.site.SiteRuleMatcher
 import com.blocker2.app.data.local.dao.SiteRuleDao
 import com.blocker2.app.data.local.entity.AllowedSiteEntity
 import com.blocker2.app.data.local.entity.SiteRuleEntity
@@ -77,7 +78,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 
         if (selectedTab == 0) {
             if (blocked.isEmpty()) {
-                SiteEmptyCard("فهرست مسدودشده‌ها خالی است", "دامنه، زیر‌دامنه، نشانی URL یا IP اضافه کنید.")
+                SiteEmptyCard("فهرست مسدودشده‌ها خالی است", "دامنه یا دامنه به‌همراه زیر‌دامنه‌هایش را اضافه کنید. مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند.")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(blocked, key = { it.id }) { rule ->
@@ -208,7 +209,7 @@ private fun SiteRuleDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text(siteTypeLabel(type)) }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    listOf("DOMAIN", "DOMAIN_AND_SUBDOMAINS", "URL_PREFIX", "IP").forEach { item ->
+                    listOf("DOMAIN", "DOMAIN_AND_SUBDOMAINS").forEach { item ->
                         DropdownMenuItem(text = { Text(siteTypeLabel(item)) }, onClick = { type = item; expanded = false })
                     }
                 }
@@ -216,9 +217,9 @@ private fun SiteRuleDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
                     value = pattern,
                     onValueChange = { pattern = it; error = null },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("دامنه، URL یا IP") },
+                    label = { Text("نام دامنه") },
                     placeholder = { Text("example.com") },
-                    supportingText = { Text("برای URL کامل، نوع «پیشوند URL» را انتخاب کنید.") }
+                    supportingText = { Text("فقط نام دامنه پشتیبانی می‌شود؛ مسیر URL و IP مستقیم قابل فیلتر نیستند.") }
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -226,12 +227,10 @@ private fun SiteRuleDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
         confirmButton = {
             Button(onClick = {
                 val normalized = normalizeSite(pattern)
-                when {
-                    normalized.isBlank() -> error = "مقدار را وارد کنید."
-                    normalized.contains(" ") -> error = "نشانی نباید فاصله داشته باشد."
-                    type == "URL_PREFIX" && !normalized.contains("/") -> error = "برای پیشوند URL مسیر یا / وارد کنید."
-                    type == "IP" && !normalized.matches(Regex("[0-9a-fA-F:.%]+")) -> error = "قالب IP معتبر نیست."
-                    else -> onSave(type, pattern)
+                if (normalized.isBlank()) {
+                    error = "فقط نام دامنهٔ معتبر وارد کنید؛ مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند."
+                } else {
+                    onSave(type, normalized)
                 }
             }) { Text("ذخیره") }
         },
@@ -266,8 +265,8 @@ private fun AllowedSiteDialog(onDismiss: () -> Unit, onSave: (String, Boolean) -
         confirmButton = {
             Button(onClick = {
                 val clean = normalizeSite(pattern)
-                if (clean.isBlank() || clean.contains("/") || clean.contains(" ")) error = "یک دامنه یا میزبان معتبر وارد کنید."
-                else onSave(pattern, subdomains)
+                if (clean.isBlank()) error = "فقط یک نام دامنهٔ معتبر وارد کنید؛ URL مسیر و IP مستقیم پشتیبانی نمی‌شوند."
+                else onSave(clean, subdomains)
             }) { Text("ذخیره") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
@@ -284,16 +283,18 @@ private fun SiteEmptyCard(title: String, description: String) {
     }
 }
 
-private fun normalizeSite(value: String): String =
-    value.trim().lowercase(Locale.ROOT)
+private fun normalizeSite(value: String): String {
+    val candidate = value.trim()
         .removePrefix("https://")
         .removePrefix("http://")
-        .removeSuffix("/")
+    if (candidate.matches(Regex("[0-9]+(\\.[0-9]+){3}"))) return ""
+    return SiteRuleMatcher.normalizeHost(candidate)
+}
 
 private fun siteTypeLabel(value: String) = when (value) {
     "DOMAIN" -> "فقط دامنه"
     "DOMAIN_AND_SUBDOMAINS" -> "دامنه و زیر‌دامنه‌ها"
-    "URL_PREFIX" -> "پیشوند URL (مسیر کامل)"
-    "IP" -> "نشانی IP"
+    "URL_PREFIX" -> "پشتیبانی نمی‌شود: مسیر URL"
+    "IP" -> "پشتیبانی نمی‌شود: IP مستقیم"
     else -> value
 }
