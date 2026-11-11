@@ -201,7 +201,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                         reaction == REACTION_LOG_ONLY -> "DETECTED"
                         reaction == REACTION_EXIT_ONLY -> "EXIT_REQUESTED"
                         startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
-                        requiresExit -> "EXIT_REQUESTED"
+                        reactionDecision.requiresExit -> "EXIT_REQUESTED"
                         else -> "DETECTED"
                     }
                 )
@@ -270,7 +270,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                             reaction == REACTION_LOG_ONLY -> "DETECTED"
                             reaction == REACTION_EXIT_ONLY -> "EXIT_REQUESTED"
                             startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
-                            requiresExit -> "EXIT_REQUESTED"
+                            reactionDecision.requiresExit -> "EXIT_REQUESTED"
                             else -> "DETECTED"
                         }
                     )
