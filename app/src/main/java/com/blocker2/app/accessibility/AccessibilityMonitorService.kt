@@ -165,20 +165,21 @@ class AccessibilityMonitorService : AccessibilityService() {
 
             val startsTimedBlock = reactionDecision.startsTimedBlock
             if (startsTimedBlock) {
+                val expiresAt = TimedBlockExpiry.calculate(now, rule.blockDurationMillis)
                 blockDao.upsert(
                     ActiveAppBlockEntity(
                         packageName = packageName,
                         sourceRuleId = rule.id,
                         reason = rule.customWarning?.takeIf { it.isNotBlank() } ?: rule.text,
                         createdAt = now,
-                        expiresAt = now + rule.blockDurationMillis
+                        expiresAt = expiresAt
                     )
                 )
                 timedBlockCreated = true
                 BlockNotificationManager.showTimedBlock(
                     context = this@AccessibilityMonitorService,
                     packageName = packageName,
-                    expiresAt = now + rule.blockDurationMillis,
+                    expiresAt = expiresAt,
                     currentTimeMillis = now
                 )
             }
@@ -226,20 +227,21 @@ class AccessibilityMonitorService : AccessibilityService() {
 
                 val startsTimedBlock = reactionDecision.startsTimedBlock
                 if (startsTimedBlock) {
+                    val expiresAt = TimedBlockExpiry.calculate(now, rule.blockDurationMillis)
                     blockDao.upsert(
                         ActiveAppBlockEntity(
                             packageName = packageName,
                             sourceRuleId = rule.id,
                             reason = rule.value,
                             createdAt = now,
-                            expiresAt = now + rule.blockDurationMillis
+                            expiresAt = expiresAt
                         )
                     )
                     timedBlockCreated = true
                     BlockNotificationManager.showTimedBlock(
                         context = this@AccessibilityMonitorService,
                         packageName = packageName,
-                        expiresAt = now + rule.blockDurationMillis,
+                        expiresAt = expiresAt,
                         currentTimeMillis = now
                     )
                 }
