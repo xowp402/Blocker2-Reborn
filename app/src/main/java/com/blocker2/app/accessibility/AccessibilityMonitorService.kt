@@ -133,10 +133,11 @@ class AccessibilityMonitorService : AccessibilityService() {
                         outcome = "COMMITMENT_ENFORCED"
                     )
                 )
-                withContext(Dispatchers.Main) {
-                    if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
-                        Log.w(TAG, "Android rejected HOME action during commitment mode")
-                    }
+            }
+            // Cooldown limits duplicate log entries, never enforcement itself.
+            withContext(Dispatchers.Main) {
+                if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                    Log.w(TAG, "Android rejected HOME action during commitment mode")
                 }
             }
             return
