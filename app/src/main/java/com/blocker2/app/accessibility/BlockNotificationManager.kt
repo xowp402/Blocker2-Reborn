@@ -28,7 +28,7 @@ object BlockNotificationManager {
         expiresAt: Long,
         currentTimeMillis: Long = System.currentTimeMillis()
     ) {
-        val remainingMillis = (expiresAt - currentTimeMillis).coerceAtLeast(0L)
+        val remainingMillis = TimedBlockTime.remainingMillis(expiresAt, currentTimeMillis)
         if (remainingMillis <= 0L) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
@@ -53,7 +53,7 @@ object BlockNotificationManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val minutes = ((remainingMillis + 59_999L) / 60_000L).coerceAtLeast(1L)
+        val minutes = TimedBlockTime.ceilMinutes(remainingMillis).coerceAtLeast(1L)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentTitle("Blocker2؛ برنامه موقتاً مسدود شد")
