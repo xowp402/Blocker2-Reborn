@@ -21,6 +21,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -82,6 +85,7 @@ class LocalDnsVpnService : VpnService() {
         checkNotNull(descriptor) { "Android did not create the VPN interface." }
         tunnel = descriptor
         running.set(true)
+        _connectionState.value = true
     }
 
     private fun loadRulesAndStartPacketLoop() {
@@ -236,6 +240,7 @@ class LocalDnsVpnService : VpnService() {
     }
 
     private fun stopVpn() {
+        _connectionState.value = false
         if (!running.getAndSet(false) && tunnel == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -260,6 +265,7 @@ class LocalDnsVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        _connectionState.value = false
         running.set(false)
         try { tunnel?.close() } catch (_: Exception) { }
         tunnel = null
@@ -379,6 +385,9 @@ class LocalDnsVpnService : VpnService() {
     }
 
     companion object {
+        private val _connectionState = MutableStateFlow(false)
+        val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
+
         const val ACTION_START = "com.blocker2.app.vpn.START"
         const val ACTION_STOP = "com.blocker2.app.vpn.STOP"
         private const val TAG = "Blocker2LocalDnsVPN"
