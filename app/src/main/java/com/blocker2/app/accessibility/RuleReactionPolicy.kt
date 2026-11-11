@@ -6,7 +6,8 @@ import java.util.Locale
 internal object RuleReactionPolicy {
     data class Decision(
         val requiresExit: Boolean,
-        val startsTimedBlock: Boolean
+        val startsTimedBlock: Boolean,
+        val outcome: String
     )
 
     fun evaluate(
@@ -22,9 +23,17 @@ internal object RuleReactionPolicy {
             (normalizedReaction == "WARN_AND_EXIT" ||
                 normalizedReaction == "TEMPORARY_BLOCK") &&
             durationMillis > 0L
+        val outcome = when {
+            normalizedReaction == "LOG_ONLY" -> "DETECTED"
+            normalizedReaction == "EXIT_ONLY" -> "EXIT_REQUESTED"
+            startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
+            requiresExit -> "EXIT_REQUESTED"
+            else -> "DETECTED"
+        }
         return Decision(
             requiresExit = requiresExit,
-            startsTimedBlock = startsTimedBlock
+            startsTimedBlock = startsTimedBlock,
+            outcome = outcome
         )
     }
 }
