@@ -37,6 +37,17 @@ class TelegramRuleMatcherTest {
     }
 
     @Test
+    fun channelUrlMatchingIsCaseInsensitiveAndAllowsTrailingPunctuation() {
+        assertTrue(
+            TelegramRuleMatcher.matches(
+                "لینک: HTTPS://T.ME/Example_Channel!",
+                "CHANNEL_URL",
+                "https://t.me/example_channel"
+            )
+        )
+    }
+
+    @Test
     fun rejectsBlankAndUnsupportedRules() {
         assertFalse(TelegramRuleMatcher.matches("متن", "USERNAME", " "))
         assertFalse(TelegramRuleMatcher.matches("متن", "UNKNOWN", "متن"))

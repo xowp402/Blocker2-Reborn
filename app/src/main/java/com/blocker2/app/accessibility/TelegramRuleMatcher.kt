@@ -2,6 +2,7 @@ package com.blocker2.app.accessibility
 
 import com.blocker2.app.core.text.RuleMatchMode
 import com.blocker2.app.core.text.RuleMatcher
+import com.blocker2.app.core.text.WordNormalizer
 
 /** Applies type-specific Telegram matching without accidental substring matches. */
 internal object TelegramRuleMatcher {
@@ -25,8 +26,8 @@ internal object TelegramRuleMatcher {
     }
 
     private fun matchesUrl(snapshot: String, ruleValue: String): Boolean {
-        val normalizedSnapshot = com.blocker2.app.core.text.WordNormalizer.normalize(snapshot)
-        val normalizedUrl = com.blocker2.app.core.text.WordNormalizer.normalize(ruleValue)
+        val normalizedSnapshot = WordNormalizer.normalize(snapshot)
+        val normalizedUrl = WordNormalizer.normalize(ruleValue)
         if (normalizedUrl.isBlank()) return false
 
         var from = 0
