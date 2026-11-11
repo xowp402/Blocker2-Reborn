@@ -143,7 +143,6 @@ class LocalDnsVpnService : VpnService() {
 
                     val responsePacket = buildUdpResponse(
                         parsed = parsed,
-                        request = request,
                         payload = dnsResponse
                     )
                     output.write(responsePacket)
@@ -352,7 +351,6 @@ class LocalDnsVpnService : VpnService() {
 
     private fun buildUdpResponse(
         parsed: ParsedDnsPacket,
-        request: ByteArray,
         payload: ByteArray
     ): ByteArray = if (parsed.ipVersion == 6) {
         DnsIpPacketBuilder.buildIpv6Response(
