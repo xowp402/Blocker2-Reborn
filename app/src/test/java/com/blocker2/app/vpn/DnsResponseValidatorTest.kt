@@ -11,6 +11,21 @@ class DnsResponseValidatorTest {
         assertTrue(DnsResponseValidator.isMatchingResponse(query, response))
     }
 
+    @Test fun acceptsWellFormedAnswerWithCompressedOwnerName() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).append(
+            byteArrayOf(
+                0xc0.toByte(), 0x0c, // owner name points to QNAME
+                0x00, 0x01, // A
+                0x00, 0x01, // IN
+                0x00, 0x00, 0x00, 0x3c, // TTL
+                0x00, 0x04, // RDLENGTH
+                0x7f, 0x00, 0x00, 0x01 // 127.0.0.1
+            )
+        ).also { it[7] = 1 }
+        assertTrue(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
     @Test fun rejectsDifferentTransactionId() {
         val query = dnsMessage("example.com", flags = 0x0100)
         val response = dnsMessage("example.com", flags = 0x8180).also { it[1] = 7 }
@@ -33,9 +48,12 @@ class DnsResponseValidatorTest {
     }
 
     @Test fun rejectsDifferentQuestionType() {
-        val query = dnsMessage("example.com", flags = 0x0100, type = 1)
-        val response = dnsMessage("example.com", flags = 0x8180, type = 28)
-        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+        assertFalse(
+            DnsResponseValidator.isMatchingResponse(
+                dnsMessage("example.com", flags = 0x0100, type = 1),
+                dnsMessage("example.com", flags = 0x8180, type = 28)
+            )
+        )
     }
 
     @Test fun rejectsDifferentQuestionClass() {
@@ -45,9 +63,12 @@ class DnsResponseValidatorTest {
     }
 
     @Test fun rejectsDifferentOpcode() {
-        val query = dnsMessage("example.com", flags = 0x0100)
-        val response = dnsMessage("example.com", flags = 0x8980)
-        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+        assertFalse(
+            DnsResponseValidator.isMatchingResponse(
+                dnsMessage("example.com", flags = 0x0100),
+                dnsMessage("example.com", flags = 0x8980)
+            )
+        )
     }
 
     @Test fun rejectsCompressedOrMalformedQuestionName() {
@@ -78,6 +99,28 @@ class DnsResponseValidatorTest {
         )
     }
 
+    @Test fun rejectsTruncatedResourceRecordAndDeclaredLengthOverflow() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val truncated = dnsMessage("example.com", flags = 0x8180).append(
+            byteArrayOf(0xc0.toByte(), 0x0c, 0x00, 0x01, 0x00, 0x01, 0, 0, 0, 1, 0, 4, 1, 2)
+        ).also { it[7] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, truncated))
+    }
+
+    @Test fun rejectsTrailingUndeclaredBytes() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).append(byteArrayOf(1, 2, 3))
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
+    @Test fun rejectsMalformedCompressionPointerInRecordOwner() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).append(
+            byteArrayOf(0xc0.toByte(), 0x0c, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0)
+        ).also { it[7] = 1; it[12 + 13 + 4] = 0xc0.toByte(); it[12 + 13 + 5] = 0x40 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
     @Test fun rejectsShortAndEmptyPackets() {
         assertFalse(DnsResponseValidator.isMatchingResponse(byteArrayOf(), byteArrayOf()))
         assertFalse(DnsResponseValidator.isMatchingResponse(ByteArray(12), ByteArray(12)))
@@ -101,4 +144,6 @@ class DnsResponseValidatorTest {
         result[end + 3] = 1
         return result
     }
+
+    private fun ByteArray.append(suffix: ByteArray): ByteArray = this + suffix
 }
