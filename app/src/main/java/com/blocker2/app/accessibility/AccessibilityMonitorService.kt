@@ -28,6 +28,7 @@ class AccessibilityMonitorService : AccessibilityService() {
     private val matchCooldown = CooldownGate()
     private val commitmentCooldown = CooldownGate()
     private val scanThrottle = ScanThrottle()
+    private val processingGate = ScanProcessingGate()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -47,23 +48,41 @@ class AccessibilityMonitorService : AccessibilityService() {
         val elapsed = SystemClock.elapsedRealtime()
         if (!scanThrottle.tryAcquire(elapsed, MIN_SCAN_INTERVAL_MS)) return
 
-        val root = rootInActiveWindow
-        val visibleText = if (root == null) {
-            ""
-        } else {
-            try {
-                collectVisibleText(root)
-            } catch (error: RuntimeException) {
-                Log.w(TAG, "Could not traverse active accessibility tree", error)
-                ""
-            } finally {
-                root.recycle()
-            }
-        }
+        if (!processingGate.tryAcquire()) return
 
-        serviceScope.launch {
-            try { processSnapshot(packageName, visibleText) }
-            catch (error: Exception) { Log.e(TAG, "Accessibility snapshot processing failed", error) }
+        var handedOffToCoroutine = false
+        try {
+            val root = try {
+                rootInActiveWindow
+            } catch (error: RuntimeException) {
+                Log.w(TAG, "Could not obtain active accessibility window", error)
+                null
+            }
+            val visibleText = if (root == null) {
+                ""
+            } else {
+                try {
+                    collectVisibleText(root)
+                } catch (error: RuntimeException) {
+                    Log.w(TAG, "Could not traverse active accessibility tree", error)
+                    ""
+                } finally {
+                    runCatching { root.recycle() }
+                }
+            }
+
+            serviceScope.launch {
+                try {
+                    processSnapshot(packageName, visibleText)
+                } catch (error: Exception) {
+                    Log.e(TAG, "Accessibility snapshot processing failed", error)
+                } finally {
+                    processingGate.release()
+                }
+            }
+            handedOffToCoroutine = true
+        } finally {
+            if (!handedOffToCoroutine) processingGate.release()
         }
     }
 
