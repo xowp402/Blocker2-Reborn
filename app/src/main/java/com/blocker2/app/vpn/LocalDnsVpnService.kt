@@ -44,8 +44,8 @@ class LocalDnsVpnService : VpnService() {
     @Volatile private var blockedRules: List<SiteRuleEntity> = emptyList()
     @Volatile private var allowedRules: List<AllowedSiteEntity> = emptyList()
 
-    private var tunnel: ParcelFileDescriptor? = null
-    private var worker: Thread? = null
+    @Volatile private var tunnel: ParcelFileDescriptor? = null
+    @Volatile private var worker: Thread? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -244,9 +244,18 @@ class LocalDnsVpnService : VpnService() {
         }
     }
 
+    /**
+     * Idempotent shutdown shared by the UI action, packet worker, and Android
+     * revoke/destroy callbacks. Synchronization prevents two callers from
+     * racing while publishing and closing the same TUN descriptor.
+     */
+    @Synchronized
     private fun stopVpn() {
         _connectionState.value = false
         if (!running.getAndSet(false) && tunnel == null) {
+            blockedRules = emptyList()
+            allowedRules = emptyList()
+            serviceScope.cancel()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             return
@@ -260,6 +269,9 @@ class LocalDnsVpnService : VpnService() {
         }
         blockedRules = emptyList()
         allowedRules = emptyList()
+        // Stop the Room collectors and any pending startup work as soon as the
+        // VPN is disabled; no background coroutine should outlive the tunnel.
+        serviceScope.cancel()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
