@@ -1,7 +1,6 @@
 package com.blocker2.app.vpn
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,7 +44,7 @@ class DnsNxDomainBuilderTest {
         val original = query("example.com")
         val snapshot = original.copyOf()
         DnsNxDomainBuilder.build(original)
-        assertFalse(original.contentEquals(snapshot).not())
+        assertTrue(original.contentEquals(snapshot))
     }
 
     private fun query(host: String, flags: Int = 0x0100, questionCount: Int = 1): ByteArray {
