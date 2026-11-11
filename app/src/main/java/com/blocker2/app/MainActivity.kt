@@ -3,6 +3,7 @@ package com.blocker2.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
+import android.content.ComponentName
 import android.net.VpnService
 import android.provider.Settings
 import android.os.Build
@@ -27,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,9 +46,27 @@ import com.blocker2.app.ui.TelegramRulesScreen
 import com.blocker2.app.ui.SiteRulesScreen
 import com.blocker2.app.ui.theme.Blocker2Theme
 import com.blocker2.app.vpn.LocalDnsVpnService
+import com.blocker2.app.accessibility.AccessibilityMonitorService
 import com.blocker2.app.startup.StartupPreferences
 
 class MainActivity : ComponentActivity() {
+    private var accessibilityEnabled by mutableStateOf(false)
+
+    private fun refreshAccessibilityStatus() {
+        val expected = ComponentName(this, AccessibilityMonitorService::class.java)
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ).orEmpty()
+        accessibilityEnabled = enabledServices.split(':').any { flattened ->
+            ComponentName.unflattenFromString(flattened) == expected
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshAccessibilityStatus()
+    }
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (!granted) {
@@ -84,6 +104,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        refreshAccessibilityStatus()
         val needsNotificationPermission =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
@@ -95,6 +116,7 @@ class MainActivity : ComponentActivity() {
             Blocker2Theme {
                 Blocker2App(
                     showNotificationPermissionButton = needsNotificationPermission,
+                    accessibilityEnabled = accessibilityEnabled,
                     onRequestNotifications = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -125,6 +147,7 @@ private enum class MainSection(val title: String, val subtitle: String) {
 @androidx.compose.runtime.Composable
 private fun Blocker2App(
     showNotificationPermissionButton: Boolean,
+    accessibilityEnabled: Boolean,
     onRequestNotifications: () -> Unit,
     onStartVpn: () -> Unit,
     onStopVpn: () -> Unit,
@@ -190,6 +213,7 @@ private fun Blocker2App(
                 when (sections[selectedSection]) {
                     MainSection.HOME -> HomeOverview(
                         showNotificationPermissionButton = showNotificationPermissionButton,
+                        accessibilityEnabled = accessibilityEnabled,
                         onRequestNotifications = onRequestNotifications,
                         onOpenAccessibilitySettings = onOpenAccessibilitySettings
                     )
@@ -266,6 +290,7 @@ private fun Blocker2App(
 @androidx.compose.runtime.Composable
 private fun HomeOverview(
     showNotificationPermissionButton: Boolean,
+    accessibilityEnabled: Boolean,
     onRequestNotifications: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit
 ) {
@@ -280,7 +305,7 @@ private fun HomeOverview(
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
-            status = "وضعیت مجوز در این صفحه هنوز به‌صورت زنده بررسی نمی‌شود."
+            status = if (accessibilityEnabled) "مجوز دسترس‌پذیری برای Blocker2 فعال است." else "مجوز دسترس‌پذیری هنوز فعال نشده است."
         )
         Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
             Text("بازکردن تنظیمات دسترس‌پذیری")
@@ -314,7 +339,7 @@ private fun HomeOverview(
         )
         Spacer(modifier = Modifier.padding(2.dp))
         Text(
-            text = "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. وضعیت واقعی هر سرویس باید جداگانه بررسی شود؛ نمایش این راهنما به معنی فعال‌بودن فیلتر نیست.",
+            text = if (accessibilityEnabled) "مجوز دسترس‌پذیری فعال است. برای شروع پایش، برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن." else "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. پس از بازگشت به برنامه، وضعیت مجوز به‌روزرسانی می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
