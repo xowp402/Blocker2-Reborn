@@ -64,6 +64,20 @@ class DnsResponseValidatorTest {
         assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
     }
 
+    @Test fun rejectsRootOnlyAndOverlongQuestionNames() {
+        val rootQuery = dnsMessage("example.com", flags = 0x0100).also { it[12] = 0 }
+        val rootResponse = dnsMessage("example.com", flags = 0x8180).also { it[12] = 0 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(rootQuery, rootResponse))
+
+        val overlongHost = listOf("a".repeat(63), "b".repeat(63), "c".repeat(63), "d".repeat(63)).joinToString(".")
+        assertFalse(
+            DnsResponseValidator.isMatchingResponse(
+                dnsMessage(overlongHost, flags = 0x0100),
+                dnsMessage(overlongHost, flags = 0x8180)
+            )
+        )
+    }
+
     @Test fun rejectsShortAndEmptyPackets() {
         assertFalse(DnsResponseValidator.isMatchingResponse(byteArrayOf(), byteArrayOf()))
         assertFalse(DnsResponseValidator.isMatchingResponse(ByteArray(12), ByteArray(12)))
