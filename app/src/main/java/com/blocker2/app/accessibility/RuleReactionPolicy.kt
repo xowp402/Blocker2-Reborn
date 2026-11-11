@@ -14,7 +14,7 @@ internal object RuleReactionPolicy {
         durationMillis: Long,
         timedBlockAlreadyCreated: Boolean
     ): Decision {
-        val normalizedReaction = reaction.uppercase(Locale.ROOT)
+        val normalizedReaction = reaction.trim().uppercase(Locale.ROOT)
         val requiresExit = normalizedReaction == "WARN_AND_EXIT" ||
             normalizedReaction == "EXIT_ONLY" ||
             normalizedReaction == "TEMPORARY_BLOCK"
