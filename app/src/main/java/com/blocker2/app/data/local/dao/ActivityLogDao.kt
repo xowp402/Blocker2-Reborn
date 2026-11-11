@@ -18,6 +18,9 @@ interface ActivityLogDao {
     @Query("SELECT COUNT(*) FROM activity_logs WHERE occurredAt >= :startOfDay")
     fun observeCountSince(startOfDay: Long): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM activity_logs WHERE occurredAt >= :startOfDay AND ruleType = :ruleType")
+    fun observeCountSinceForType(startOfDay: Long, ruleType: String): Flow<Int>
+
     @Query("DELETE FROM activity_logs WHERE occurredAt < :olderThan")
     suspend fun deleteOlderThan(olderThan: Long): Int
 
