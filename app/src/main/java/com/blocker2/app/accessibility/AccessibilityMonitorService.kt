@@ -26,8 +26,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 class AccessibilityMonitorService : AccessibilityService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val lastMatchAt = ConcurrentHashMap<String, Long>()
-    private val lastCommitmentEnforcementAt = ConcurrentHashMap<String, Long>()
+    private val matchCooldown = CooldownGate()
+    private val commitmentCooldown = CooldownGate()
     private var lastScanAt = 0L
 
     override fun onServiceConnected() {
@@ -89,9 +89,7 @@ class AccessibilityMonitorService : AccessibilityService() {
 
         val commitment = app.database.commitmentSessionDao().getSession()
         if (commitment != null && commitment.expiresAt > now) {
-            val previousEnforcement = lastCommitmentEnforcementAt[packageName] ?: 0L
-            if (now - previousEnforcement >= COMMITMENT_ENFORCEMENT_COOLDOWN_MS) {
-                lastCommitmentEnforcementAt[packageName] = now
+            if (commitmentCooldown.tryAcquire(packageName, now, COMMITMENT_ENFORCEMENT_COOLDOWN_MS)) {
                 app.database.activityLogDao().insert(
                     ActivityLogEntity(
                         occurredAt = now,
@@ -126,9 +124,7 @@ class AccessibilityMonitorService : AccessibilityService() {
             if (!RuleMatcher.matches(visibleText, rule.text, mode)) continue
 
             val matchKey = "$packageName:${rule.id}"
-            val previous = lastMatchAt[matchKey] ?: 0L
-            if (now - previous < MATCH_COOLDOWN_MS) continue
-            lastMatchAt[matchKey] = now
+            if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
 
             val reaction = rule.reaction.uppercase()
             val requiresExit = reaction == REACTION_WARN_AND_EXIT ||
@@ -196,9 +192,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                 if (!matched) continue
 
                 val matchKey = packageName + ":telegram:" + rule.id
-                val previous = lastMatchAt[matchKey] ?: 0L
-                if (now - previous < MATCH_COOLDOWN_MS) continue
-                lastMatchAt[matchKey] = now
+                if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
 
                 val reaction = rule.reaction.uppercase()
                 val requiresExit = reaction == REACTION_WARN_AND_EXIT ||
@@ -308,8 +302,8 @@ class AccessibilityMonitorService : AccessibilityService() {
     override fun onDestroy() {
         _connectionState.value = false
         serviceScope.cancel()
-        lastMatchAt.clear()
-        lastCommitmentEnforcementAt.clear()
+        matchCooldown.clear()
+        commitmentCooldown.clear()
         super.onDestroy()
     }
 
