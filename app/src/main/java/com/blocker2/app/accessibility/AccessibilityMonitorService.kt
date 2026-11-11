@@ -349,9 +349,5 @@ class AccessibilityMonitorService : AccessibilityService() {
         private const val COMMITMENT_ENFORCEMENT_COOLDOWN_MS = 1_000L
         private const val MAX_NODES = 500
         private const val MAX_TEXT_LENGTH = 12_000
-        private const val REACTION_WARN_AND_EXIT = "WARN_AND_EXIT"
-        private const val REACTION_EXIT_ONLY = "EXIT_ONLY"
-        private const val REACTION_TEMPORARY_BLOCK = "TEMPORARY_BLOCK"
-        private const val REACTION_LOG_ONLY = "LOG_ONLY"
     }
 }
