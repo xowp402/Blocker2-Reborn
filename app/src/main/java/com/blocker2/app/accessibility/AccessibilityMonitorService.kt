@@ -63,6 +63,11 @@ class AccessibilityMonitorService : AccessibilityService() {
                 ""
             } else {
                 try {
+                    val activePackage = root.packageName?.toString()
+                    if (activePackage != null && activePackage != packageName) {
+                        Log.d(TAG, "Discarding stale accessibility tree for $activePackage; event belongs to $packageName")
+                        return
+                    }
                     collectVisibleText(root)
                 } catch (error: RuntimeException) {
                     Log.w(TAG, "Could not traverse active accessibility tree", error)
