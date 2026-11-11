@@ -301,7 +301,7 @@ class LocalDnsVpnService : VpnService() {
         // with UDP as its immediate next-header. Extension headers are not parsed.
         if (packet.size < 48 || (packet[6].toInt() and 0xff) != IPPROTO_UDP) return null
         val payloadLength = readU16(packet, 4)
-        if (payloadLength < 8 || packet.size < 40 + payloadLength) return null
+        if (payloadLength < 8 || !IpPacketValidator.isExactIpv6PacketLength(packet, payloadLength)) return null
         val sourcePort = readU16(packet, 40)
         val destinationPort = readU16(packet, 42)
         if (destinationPort != DNS_PORT) return null
