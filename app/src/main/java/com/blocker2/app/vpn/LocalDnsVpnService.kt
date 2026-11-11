@@ -90,6 +90,9 @@ class LocalDnsVpnService : VpnService() {
             // Load the persisted snapshot before accepting the first DNS query.
             blockedRules = dao.observeEnabledBlockedSites().first()
             allowedRules = dao.observeAllowedSites().first()
+            // The user may stop/revoke the VPN while Room is loading its initial
+            // snapshot. Never start a packet worker after the tunnel was released.
+            if (!running.get() || tunnel == null) return@launch
             launch {
                 combine(
                     dao.observeEnabledBlockedSites(),
@@ -100,12 +103,13 @@ class LocalDnsVpnService : VpnService() {
                         allowedRules = allowed
                     }
             }
-            startPacketLoop()
+            if (running.get() && tunnel != null) startPacketLoop()
         }
     }
 
     private fun startPacketLoop() {
-        val descriptor = checkNotNull(tunnel)
+        if (!running.get()) return
+        val descriptor = tunnel ?: return
         worker = Thread({
             val input = FileInputStream(descriptor.fileDescriptor)
             val output = FileOutputStream(descriptor.fileDescriptor)
@@ -227,8 +231,15 @@ class LocalDnsVpnService : VpnService() {
             stopSelf()
             return
         }
-        try { tunnel?.close() } catch (_: Exception) { }
+        // Clear the published descriptor before closing it so asynchronous
+        // startup cannot mistake a released tunnel for an active one.
+        val descriptor = tunnel
         tunnel = null
+        try { descriptor?.close() } catch (error: Exception) {
+            android.util.Log.w(TAG, "Error while closing DNS tunnel", error)
+        }
+        blockedRules = emptyList()
+        allowedRules = emptyList()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
