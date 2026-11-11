@@ -23,7 +23,7 @@ class DnsNxDomainBuilderTest {
 
     @Test fun omitsOptionalEdnsAdditionalRecordFromResponse() {
         val base = query("missing.example")
-        val withOpt = base + byteArrayOf(0, 0, 41, 4, 0, 0, 0, 0, 0, 0)
+        val withOpt = base + byteArrayOf(0, 0, 41, 4, 0, 0, 0, 0, 0, 0, 0)
         withOpt[11] = 1
         val response = DnsNxDomainBuilder.build(withOpt)!!
         assertEquals(base.size, response.size)

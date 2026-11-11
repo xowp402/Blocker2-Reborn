@@ -85,6 +85,34 @@ class DnsQuestionParserTest {
         assertNull(DnsQuestionParser.readHostname(impossible))
     }
 
+    @Test fun rejectsDuplicateEdns0RecordsAndNonRootOptOwner() {
+        val opt = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 4, 0, 12, 0, 0)
+        val duplicate = query("example.com") + opt + opt
+        duplicate[10] = 0
+        duplicate[11] = 2
+        assertNull(DnsQuestionParser.readHostname(duplicate))
+
+        val nonRootOwner = query("example.com") + byteArrayOf(
+            1, 120, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0
+        )
+        nonRootOwner[11] = 1
+        assertNull(DnsQuestionParser.readHostname(nonRootOwner))
+    }
+
+    @Test fun rejectsIncompleteEdnsOptionHeaderAndOptionPayload() {
+        val incompleteHeader = query("example.com") + byteArrayOf(
+            0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 2, 0, 12
+        )
+        incompleteHeader[11] = 1
+        assertNull(DnsQuestionParser.readHostname(incompleteHeader))
+
+        val incompletePayload = query("example.com") + byteArrayOf(
+            0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 4, 0, 12, 0, 1
+        )
+        incompletePayload[11] = 1
+        assertNull(DnsQuestionParser.readHostname(incompletePayload))
+    }
+
     private fun ByteArray.append(suffix: ByteArray): ByteArray = this + suffix
 
     private fun query(
