@@ -27,7 +27,7 @@ interface ActiveAppBlockDao {
             WHEN expiresAt > 9223372036854775807 - :extensionMillis THEN 9223372036854775807
             ELSE expiresAt + :extensionMillis
         END
-        WHERE packageName = :packageName AND expiresAt > :now
+        WHERE packageName = :packageName AND expiresAt > :now AND :extensionMillis > 0
         """
     )
     suspend fun extendActive(packageName: String, extensionMillis: Long, now: Long): Int
