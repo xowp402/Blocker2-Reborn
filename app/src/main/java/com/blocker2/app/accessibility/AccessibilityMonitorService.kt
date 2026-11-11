@@ -129,7 +129,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                         ruleType = "COMMITMENT",
                         matchedValue = "Personal commitment session",
                         reaction = "EXIT_ONLY",
-                        durationMillis = (commitment.expiresAt - now).coerceAtLeast(0L),
+                        durationMillis = TimedBlockTime.remainingMillis(commitment.expiresAt, now),
                         outcome = "COMMITMENT_ENFORCED"
                     )
                 )
