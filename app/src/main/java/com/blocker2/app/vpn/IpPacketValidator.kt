@@ -7,7 +7,7 @@ package com.blocker2.app.vpn
 internal object IpPacketValidator {
     fun isValidIpv4Header(packet: ByteArray, totalLength: Int): Boolean {
         if (packet.size < IPV4_MIN_HEADER_SIZE || totalLength < IPV4_MIN_HEADER_SIZE ||
-            totalLength > packet.size
+            totalLength != packet.size
         ) return false
         if ((packet[0].toInt() ushr 4 and 0x0f) != 4) return false
         val headerLength = (packet[0].toInt() and 0x0f) * 4
@@ -19,6 +19,12 @@ internal object IpPacketValidator {
         if ((fragmentField and 0x3fff) != 0 || (fragmentField and 0x8000) != 0) return false
         if (IpPacketChecksum.internetChecksum(packet, 0, headerLength) != 0) return false
         return true
+    }
+
+    /** IPv6 payload length must describe the complete packet, with no trailing bytes. */
+    fun isExactIpv6PacketLength(packet: ByteArray, payloadLength: Int): Boolean {
+        if (packet.size < IPV6_HEADER_SIZE || payloadLength < 0) return false
+        return packet.size.toLong() == IPV6_HEADER_SIZE.toLong() + payloadLength.toLong()
     }
 
     fun isValidUdpLength(packet: ByteArray, offset: Int, udpLength: Int, enclosingLength: Int): Boolean {
