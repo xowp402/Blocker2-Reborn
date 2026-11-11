@@ -135,6 +135,34 @@ class DnsResponseValidatorTest {
         assertFalse(DnsResponseValidator.isMatchingResponse(ByteArray(12), ByteArray(12)))
     }
 
+    @Test fun acceptsWellFormedEdns0OptRecordInAdditionalSection() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        // Root owner, OPT (41), UDP payload size 1232, zero extended flags,
+        // and one zero-length EDNS option (code 12).
+        val optRecord = byteArrayOf(
+            0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 4, 0, 12, 0, 0
+        )
+        val response = dnsMessage("example.com", flags = 0x8180)
+            .append(optRecord).also {
+                it[10] = 0
+                it[11] = 1
+            }
+        assertTrue(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
+    @Test fun rejectsEdns0OptRecordWhoseOptionDataExceedsRdataLength() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val malformedOpt = byteArrayOf(
+            0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 8, 0, 12, 0, 0
+        )
+        val response = dnsMessage("example.com", flags = 0x8180)
+            .append(malformedOpt).also {
+                it[10] = 0
+                it[11] = 1
+            }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
     private fun dnsMessage(host: String, flags: Int, type: Int = 1): ByteArray {
         val name = host.split(".").flatMap { label ->
             listOf(label.length.toByte()) + label.toByteArray(Charsets.US_ASCII).toList()
