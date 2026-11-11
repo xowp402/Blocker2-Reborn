@@ -27,13 +27,13 @@ class WordNormalizerTest {
 
     @Test
     fun collapsesUnicodeSpacesIncludingNonBreakingAndEmSpace() {
-        assertEquals("hello world", WordNormalizer.normalize("hello\\u00A0world"))
-        assertEquals("hello world", WordNormalizer.normalize("hello\\u2003world"))
+        assertEquals("hello world", WordNormalizer.normalize("hello world"))
+        assertEquals("hello world", WordNormalizer.normalize("hello world"))
     }
 
     @Test
     fun removesInvisibleFormattingCharactersThatCouldSplitWords() {
-        assertEquals("سلام", WordNormalizer.normalize("سلا\\u200Bم\\uFEFF"))
+        assertEquals("سلام", WordNormalizer.normalize("سلا​م﻿"))
     }
 
     @Test

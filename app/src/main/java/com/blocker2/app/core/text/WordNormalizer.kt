@@ -41,5 +41,5 @@ object WordNormalizer {
     // Ignore invisible formatting marks that can otherwise split a filtered word.
     private val INVISIBLE_FORMATTING = Regex("[\\u200B\\u200D\\u2060\\uFEFF]")
     // Unicode separator categories include NBSP, em space and other non-ASCII spaces.
-    private val WHITESPACE = Regex("[\\\p{Z}\\s]+")
+    private val WHITESPACE = Regex("[\\p{Z}\\s]+")
 }
