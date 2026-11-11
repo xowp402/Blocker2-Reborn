@@ -300,9 +300,13 @@ class AccessibilityMonitorService : AccessibilityService() {
         return result.toString().take(MAX_TEXT_LENGTH)
     }
 
-    override fun onInterrupt() { Log.w(TAG, "Accessibility monitoring interrupted by the system") }
+    override fun onInterrupt() {
+        _connectionState.value = false
+        Log.w(TAG, "Accessibility monitoring interrupted by the system")
+    }
 
     override fun onDestroy() {
+        _connectionState.value = false
         serviceScope.cancel()
         lastMatchAt.clear()
         lastCommitmentEnforcementAt.clear()
