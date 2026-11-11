@@ -1,5 +1,6 @@
 package com.blocker2.app.accessibility
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,4 +76,36 @@ class RuleReactionPolicyTest {
         assertTrue(result.requiresExit)
         assertFalse(result.startsTimedBlock)
     }
+    @Test
+    fun normalizedLogOnlyReactionProducesDetectedOutcome() {
+        val result = RuleReactionPolicy.evaluate("  log_only  ", 5_000L, false)
+        assertFalse(result.requiresExit)
+        assertFalse(result.startsTimedBlock)
+        assertEquals("DETECTED", result.outcome)
+    }
+
+    @Test
+    fun exitOnlyReactionProducesExitRequestedOutcome() {
+        val result = RuleReactionPolicy.evaluate(" exit_only ", 5_000L, false)
+        assertEquals("EXIT_REQUESTED", result.outcome)
+    }
+
+    @Test
+    fun timedBlockProducesTemporaryBlockOutcome() {
+        val result = RuleReactionPolicy.evaluate(" warn_and_exit ", 5_000L, false)
+        assertEquals("TEMPORARY_BLOCK_STARTED", result.outcome)
+    }
+
+    @Test
+    fun warningWithoutPositiveDurationProducesExitRequestedOutcome() {
+        val result = RuleReactionPolicy.evaluate("WARN_AND_EXIT", 0L, false)
+        assertEquals("EXIT_REQUESTED", result.outcome)
+    }
+
+    @Test
+    fun unknownReactionProducesDetectedOutcome() {
+        val result = RuleReactionPolicy.evaluate(" unknown ", 5_000L, false)
+        assertEquals("DETECTED", result.outcome)
+    }
+
 }
