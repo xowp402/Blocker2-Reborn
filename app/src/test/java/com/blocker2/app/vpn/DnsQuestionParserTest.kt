@@ -56,6 +56,37 @@ class DnsQuestionParserTest {
         assertNull(DnsQuestionParser.readHostname(control))
     }
 
+    @Test fun acceptsWellFormedEdns0Query() {
+        val packet = query("example.com").append(
+            byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 4, 0, 12, 0, 0)
+        ).also {
+            it[10] = 0
+            it[11] = 1
+        }
+        assertEquals("example.com", DnsQuestionParser.readHostname(packet))
+    }
+
+    @Test fun rejectsMalformedEdns0OptionLength() {
+        val packet = query("example.com").append(
+            byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 8, 0, 12, 0, 0)
+        ).also {
+            it[10] = 0
+            it[11] = 1
+        }
+        assertNull(DnsQuestionParser.readHostname(packet))
+    }
+
+    @Test fun rejectsUndeclaredTrailingBytesAndImpossibleAdditionalCount() {
+        assertNull(DnsQuestionParser.readHostname(query("example.com") + byteArrayOf(1, 2, 3)))
+        val impossible = query("example.com").also {
+            it[10] = 0x7f
+            it[11] = 0xff.toByte()
+        }
+        assertNull(DnsQuestionParser.readHostname(impossible))
+    }
+
+    private fun ByteArray.append(suffix: ByteArray): ByteArray = this + suffix
+
     private fun query(
         hostname: String,
         flags: Int = 0x0100,
