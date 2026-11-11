@@ -58,9 +58,9 @@ internal object DnsResponseValidator {
 
         val optSeen = booleanArrayOf(false)
         var offset = questionEnd
-        offset = parseRecordSection(packet, offset, answerCount, isAdditional = false, optSeen) ?: return false
+        offset = parseRecordSection(packet, offset, answerCount, isAdditional = false, optSeen = optSeen) ?: return false
         offset = parseRecordSection(packet, offset, authorityCount, isAdditional = false, optSeen) ?: return false
-        offset = parseRecordSection(packet, offset, additionalCount, isAdditional = true, optSeen) ?: return false
+        offset = parseRecordSection(packet, offset, additionalCount, isAdditional = true, optSeen = optSeen) ?: return false
         return offset == packet.size
     }
 
