@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.content.Intent
 import android.net.VpnService
+import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -100,7 +101,10 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onStartVpn = { requestLocalDnsVpn() },
-                    onStopVpn = { stopLocalDnsVpn() }
+                    onStopVpn = { stopLocalDnsVpn() },
+                    onOpenAccessibilitySettings = {
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
                 )
             }
         }
@@ -123,7 +127,8 @@ private fun Blocker2App(
     showNotificationPermissionButton: Boolean,
     onRequestNotifications: () -> Unit,
     onStartVpn: () -> Unit,
-    onStopVpn: () -> Unit
+    onStopVpn: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit
 ) {
     var selectedSection by remember { mutableIntStateOf(0) }
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application
@@ -183,7 +188,11 @@ private fun Blocker2App(
                 )
 
                 when (sections[selectedSection]) {
-                    MainSection.HOME -> HomeOverview(showNotificationPermissionButton, onRequestNotifications)
+                    MainSection.HOME -> HomeOverview(
+                        showNotificationPermissionButton = showNotificationPermissionButton,
+                        onRequestNotifications = onRequestNotifications,
+                        onOpenAccessibilitySettings = onOpenAccessibilitySettings
+                    )
                     MainSection.WORDS -> WordRulesScreen(
                         wordDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.wordRuleDao(),
@@ -257,12 +266,13 @@ private fun Blocker2App(
 @androidx.compose.runtime.Composable
 private fun HomeOverview(
     showNotificationPermissionButton: Boolean,
-    onRequestNotifications: () -> Unit
+    onRequestNotifications: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         StatusCard(
             title = "فیلتر واژه‌ها",
-            status = "هنوز راه‌اندازی نشده"
+            status = "برای شروع، سرویس دسترس‌پذیری را فعال و برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن."
         )
         StatusCard(
             title = "فیلتر سایت‌ها",
@@ -270,8 +280,11 @@ private fun HomeOverview(
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
-            status = "نیازمند فعال‌سازی مجوز در تنظیمات اندروید"
+            status = "وضعیت مجوز در این صفحه هنوز به‌صورت زنده بررسی نمی‌شود."
         )
+        Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
+            Text("بازکردن تنظیمات دسترس‌پذیری")
+        }
         if (showNotificationPermissionButton) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -301,7 +314,7 @@ private fun HomeOverview(
         )
         Spacer(modifier = Modifier.padding(2.dp))
         Text(
-            text = "این نسخه، پوسته اولیه پروژه است. وضعیت‌ها عمداً واقعی و شفاف نمایش داده می‌شوند؛ هیچ فیلتری تا زمان تکمیل موتور مربوطه فعال اعلام نمی‌شود.",
+            text = "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. وضعیت واقعی هر سرویس باید جداگانه بررسی شود؛ نمایش این راهنما به معنی فعال‌بودن فیلتر نیست.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
