@@ -325,29 +325,7 @@ class LocalDnsVpnService : VpnService() {
     }
 
 
-    private fun buildNxDomain(query: ByteArray): ByteArray? {
-        if (query.size < 17 || readU16(query, 4) != 1) return null
-        var offset = 12
-        while (offset < query.size) {
-            val size = query[offset].toInt() and 0xff
-            if (size == 0) {
-                offset++
-                break
-            }
-            if ((size and 0xc0) == 0xc0 || size > 63 || offset + size + 1 > query.size) return null
-            offset += size + 1
-        }
-        if (offset + 4 > query.size) return null
-        val questionEnd = offset + 4
-        val response = query.copyOf(questionEnd)
-        val flags = readU16(query, 2)
-        val responseFlags = (flags and 0x7900) or 0x8083
-        writeU16(response, 2, responseFlags)
-        writeU16(response, 6, 0)
-        writeU16(response, 8, 0)
-        writeU16(response, 10, 0)
-        return response
-    }
+    private fun buildNxDomain(query: ByteArray): ByteArray? = DnsNxDomainBuilder.build(query)
 
     private fun buildUdpResponse(
         parsed: ParsedDnsPacket,
