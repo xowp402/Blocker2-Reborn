@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 class AccessibilityMonitorService : AccessibilityService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -272,23 +271,32 @@ class AccessibilityMonitorService : AccessibilityService() {
         val stack = ArrayDeque<AccessibilityNodeInfo>()
         stack.add(root)
         var visited = 0
-        while (stack.isNotEmpty() && visited < MAX_NODES && result.length < MAX_TEXT_LENGTH) {
-            val node = stack.removeLast()
-            visited++
-            try {
-                if (!node.isPassword) {
-                    node.text?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
-                    node.contentDescription?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
+        try {
+            while (stack.isNotEmpty() && visited < MAX_NODES && result.length < MAX_TEXT_LENGTH) {
+                val node = stack.removeLast()
+                visited++
+                try {
+                    if (!node.isPassword) {
+                        node.text?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
+                        node.contentDescription?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
+                    }
+                    for (index in 0 until node.childCount) {
+                        if (visited + stack.size >= MAX_NODES) break
+                        val child = node.getChild(index) ?: continue
+                        stack.add(child)
+                    }
+                } catch (error: RuntimeException) {
+                    Log.d(TAG, "Skipped an inaccessible accessibility node", error)
+                } finally {
+                    if (node !== root) runCatching { node.recycle() }
                 }
-                for (index in 0 until node.childCount) {
-                    if (visited + stack.size >= MAX_NODES) break
-                    val child = node.getChild(index) ?: continue
-                    stack.add(child)
-                }
-            } catch (error: RuntimeException) {
-                Log.d(TAG, "Skipped an inaccessible accessibility node", error)
-            } finally {
-                if (node !== root) node.recycle()
+            }
+        } finally {
+            // Recycle children that were queued but not visited because a traversal
+            // limit was reached or an unexpected error interrupted the scan.
+            while (stack.isNotEmpty()) {
+                val pending = stack.removeLast()
+                if (pending !== root) runCatching { pending.recycle() }
             }
         }
         return result.toString().take(MAX_TEXT_LENGTH)
