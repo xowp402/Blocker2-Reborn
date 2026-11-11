@@ -27,7 +27,7 @@ class AccessibilityMonitorService : AccessibilityService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val matchCooldown = CooldownGate()
     private val commitmentCooldown = CooldownGate()
-    private var lastScanAt = 0L
+    private val scanThrottle = ScanThrottle()
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -45,8 +45,7 @@ class AccessibilityMonitorService : AccessibilityService() {
         val packageName = event.packageName?.toString() ?: return
         if (packageName == applicationContext.packageName) return
         val elapsed = SystemClock.elapsedRealtime()
-        if (elapsed - lastScanAt < MIN_SCAN_INTERVAL_MS) return
-        lastScanAt = elapsed
+        if (!scanThrottle.tryAcquire(elapsed, MIN_SCAN_INTERVAL_MS)) return
 
         val root = rootInActiveWindow
         val visibleText = if (root == null) {
