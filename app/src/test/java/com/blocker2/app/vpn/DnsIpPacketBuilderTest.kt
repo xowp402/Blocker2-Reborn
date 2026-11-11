@@ -57,6 +57,61 @@ class DnsIpPacketBuilderTest {
         assertArrayEquals(dns, packet.copyOfRange(48, packet.size))
     }
 
+    @Test fun wrapsNxDomainInValidIpv4UdpResponse() {
+        val query = dnsQuery("blocked.example")
+        val nxDomain = DnsNxDomainBuilder.build(query)!!
+        val client = byteArrayOf(10, 111, 0, 2)
+        val resolver = byteArrayOf(10, 111, 0, 1)
+        val packet = DnsIpPacketBuilder.buildIpv4Response(
+            sourceAddress = resolver,
+            destinationAddress = client,
+            sourcePort = 53,
+            destinationPort = 53000,
+            identification = 0x1234,
+            payload = nxDomain
+        )
+
+        assertTrue(IpPacketValidator.isValidIpv4Header(packet, packet.size))
+        assertTrue(IpPacketValidator.isValidUdpLength(packet, 20, 8 + nxDomain.size, packet.size - 20))
+        assertArrayEquals(nxDomain, packet.copyOfRange(28, packet.size))
+        assertEquals(3, readU16(packet, 30) and 0x000f)
+    }
+
+    @Test fun wrapsNxDomainInValidIpv6UdpResponse() {
+        val query = dnsQuery("blocked.example")
+        val nxDomain = DnsNxDomainBuilder.build(query)!!
+        val client = ByteArray(16).also { it[0] = 0xfd.toByte(); it[1] = 0x11; it[15] = 2 }
+        val resolver = ByteArray(16).also { it[0] = 0xfd.toByte(); it[1] = 0x11; it[15] = 1 }
+        val packet = DnsIpPacketBuilder.buildIpv6Response(
+            sourceAddress = resolver,
+            destinationAddress = client,
+            sourcePort = 53,
+            destinationPort = 53000,
+            payload = nxDomain
+        )
+
+        assertTrue(IpPacketValidator.isExactIpv6PacketLength(packet, readU16(packet, 4)))
+        assertTrue(IpPacketValidator.isValidIpv6UdpChecksum(packet, 40, 8 + nxDomain.size))
+        assertArrayEquals(nxDomain, packet.copyOfRange(48, packet.size))
+        assertEquals(3, readU16(packet, 50) and 0x000f)
+    }
+
+    private fun dnsQuery(host: String): ByteArray {
+        val encodedName = host.split(".").flatMap { label ->
+            listOf(label.length.toByte()) + label.toByteArray(Charsets.US_ASCII).toList()
+        }.toByteArray() + byteArrayOf(0)
+        return ByteArray(12 + encodedName.size + 4).also { query ->
+            query[0] = 0x45
+            query[1] = 0x67
+            query[2] = 0x01
+            query[5] = 1
+            System.arraycopy(encodedName, 0, query, 12, encodedName.size)
+            val questionEnd = 12 + encodedName.size
+            query[questionEnd + 1] = 1
+            query[questionEnd + 3] = 1
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsInvalidIpv4AddressLength() {
         DnsIpPacketBuilder.buildIpv4Response(
