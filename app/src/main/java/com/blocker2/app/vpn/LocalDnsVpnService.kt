@@ -279,7 +279,7 @@ class LocalDnsVpnService : VpnService() {
         if (udpLength < 8 || packet.size < ipHeaderLength + udpLength) return null
         val dnsStart = ipHeaderLength + 8
         val dns = packet.copyOfRange(dnsStart, ipHeaderLength + udpLength)
-        val hostname = readQuestionName(dns) ?: return null
+        val hostname = DnsQuestionParser.readHostname(dns) ?: return null
         return ParsedDnsPacket(
             ipVersion = 4,
             sourceAddress = packet.copyOfRange(12, 16),
@@ -317,31 +317,6 @@ class LocalDnsVpnService : VpnService() {
         )
     }
 
-    private fun readQuestionName(dns: ByteArray): String? {
-        if (dns.size < 17 || readU16(dns, 4) != 1) return null
-        val labels = ArrayList<String>()
-        var offset = 12
-        var jumps = 0
-        var consumedEnd = -1
-        while (offset < dns.size) {
-            val size = dns[offset].toInt() and 0xff
-            if (size == 0) {
-                if (consumedEnd < 0) consumedEnd = offset + 1
-                return if (consumedEnd + 4 <= dns.size) labels.joinToString(".") else null
-            }
-            if ((size and 0xc0) == 0xc0) {
-                if (offset + 1 >= dns.size || jumps++ > 8) return null
-                if (consumedEnd < 0) consumedEnd = offset + 2
-                offset = ((size and 0x3f) shl 8) or (dns[offset + 1].toInt() and 0xff)
-                continue
-            }
-            if (size > 63 || offset + 1 + size > dns.size) return null
-            val label = dns.copyOfRange(offset + 1, offset + 1 + size).toString(Charsets.US_ASCII)
-            labels += label
-            offset += size + 1
-        }
-        return null
-    }
 
     private fun buildNxDomain(query: ByteArray): ByteArray? {
         if (query.size < 17 || readU16(query, 4) != 1) return null
