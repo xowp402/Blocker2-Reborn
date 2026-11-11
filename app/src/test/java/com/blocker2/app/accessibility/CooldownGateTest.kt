@@ -32,6 +32,20 @@ class CooldownGateTest {
     }
 
     @Test
+    fun elapsedTimeComparisonDoesNotOverflowAcrossLongRange() {
+        val gate = CooldownGate()
+        assertTrue(gate.tryAcquire("extreme", Long.MIN_VALUE, Long.MAX_VALUE))
+        assertTrue(gate.tryAcquire("extreme", 0L, Long.MAX_VALUE))
+    }
+
+    @Test
+    fun cooldownDeadlineOverflowDoesNotAllowEarlyAcquisition() {
+        val gate = CooldownGate()
+        assertTrue(gate.tryAcquire("near-max", Long.MAX_VALUE - 5L, 10L))
+        assertFalse(gate.tryAcquire("near-max", Long.MAX_VALUE, 10L))
+    }
+
+    @Test
     fun simultaneousEventsOnlyAcquireOnce() {
         val gate = CooldownGate()
         val workers = 24
