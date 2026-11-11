@@ -156,8 +156,6 @@ class AccessibilityMonitorService : AccessibilityService() {
 
             val matchKey = "$packageName:${rule.id}"
             if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
-
-            val reaction = rule.reaction.uppercase()
             val reactionDecision = RuleReactionPolicy.evaluate(
                 reaction = rule.reaction,
                 durationMillis = rule.blockDurationMillis,
@@ -197,13 +195,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                     matchedValue = rule.text,
                     reaction = rule.reaction,
                     durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                    outcome = when {
-                        reaction == REACTION_LOG_ONLY -> "DETECTED"
-                        reaction == REACTION_EXIT_ONLY -> "EXIT_REQUESTED"
-                        startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
-                        reactionDecision.requiresExit -> "EXIT_REQUESTED"
-                        else -> "DETECTED"
-                    }
+                    outcome = reactionDecision.outcome
                 )
             )
             Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
@@ -225,8 +217,6 @@ class AccessibilityMonitorService : AccessibilityService() {
 
                 val matchKey = packageName + ":telegram:" + rule.id
                 if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
-
-                val reaction = rule.reaction.uppercase()
                 val reactionDecision = RuleReactionPolicy.evaluate(
                     reaction = rule.reaction,
                     durationMillis = rule.blockDurationMillis,
@@ -266,13 +256,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                         matchedValue = rule.value,
                         reaction = rule.reaction,
                         durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                        outcome = when {
-                            reaction == REACTION_LOG_ONLY -> "DETECTED"
-                            reaction == REACTION_EXIT_ONLY -> "EXIT_REQUESTED"
-                            startsTimedBlock -> "TEMPORARY_BLOCK_STARTED"
-                            reactionDecision.requiresExit -> "EXIT_REQUESTED"
-                            else -> "DETECTED"
-                        }
+                        outcome = reactionDecision.outcome
                     )
                 )
                 Log.i(TAG, "Telegram rule detected: ruleId=" + rule.id + ", package=" + packageName)
