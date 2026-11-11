@@ -158,13 +158,14 @@ class AccessibilityMonitorService : AccessibilityService() {
             if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
 
             val reaction = rule.reaction.uppercase()
-            val requiresExit = reaction == REACTION_WARN_AND_EXIT ||
-                reaction == REACTION_EXIT_ONLY || reaction == REACTION_TEMPORARY_BLOCK
-            if (requiresExit) shouldExit = true
+            val reactionDecision = RuleReactionPolicy.evaluate(
+                reaction = rule.reaction,
+                durationMillis = rule.blockDurationMillis,
+                timedBlockAlreadyCreated = timedBlockCreated
+            )
+            if (reactionDecision.requiresExit) shouldExit = true
 
-            val startsTimedBlock = !timedBlockCreated &&
-                (reaction == REACTION_WARN_AND_EXIT || reaction == REACTION_TEMPORARY_BLOCK) &&
-                rule.blockDurationMillis > 0L
+            val startsTimedBlock = reactionDecision.startsTimedBlock
             if (startsTimedBlock) {
                 blockDao.upsert(
                     ActiveAppBlockEntity(
@@ -226,13 +227,14 @@ class AccessibilityMonitorService : AccessibilityService() {
                 if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
 
                 val reaction = rule.reaction.uppercase()
-                val requiresExit = reaction == REACTION_WARN_AND_EXIT ||
-                    reaction == REACTION_EXIT_ONLY || reaction == REACTION_TEMPORARY_BLOCK
-                if (requiresExit) shouldExit = true
+                val reactionDecision = RuleReactionPolicy.evaluate(
+                    reaction = rule.reaction,
+                    durationMillis = rule.blockDurationMillis,
+                    timedBlockAlreadyCreated = timedBlockCreated
+                )
+                if (reactionDecision.requiresExit) shouldExit = true
 
-                val startsTimedBlock = !timedBlockCreated &&
-                    (reaction == REACTION_WARN_AND_EXIT || reaction == REACTION_TEMPORARY_BLOCK) &&
-                    rule.blockDurationMillis > 0L
+                val startsTimedBlock = reactionDecision.startsTimedBlock
                 if (startsTimedBlock) {
                     blockDao.upsert(
                         ActiveAppBlockEntity(
