@@ -46,4 +46,25 @@ class RuleMatcherTest {
     fun emptyRulesNeverMatch() {
         assertFalse(RuleMatcher.matches("سلام", "   ", RuleMatchMode.NORMALIZED_WORD))
     }
+
+    @Test
+    fun normalizedWordMatchesAtPunctuationBoundaries() {
+        assertTrue(RuleMatcher.matches("(سلام)،", "سلام", RuleMatchMode.NORMALIZED_WORD))
+    }
+
+    @Test
+    fun normalizedWordDoesNotMatchWhenAdjacentToLatinLettersOrDigits() {
+        assertFalse(RuleMatcher.matches("xسلام", "سلام", RuleMatchMode.NORMALIZED_WORD))
+        assertFalse(RuleMatcher.matches("سلام2", "سلام", RuleMatchMode.NORMALIZED_WORD))
+    }
+
+    @Test
+    fun phraseModeMatchesCaseInsensitiveEnglishText() {
+        assertTrue(RuleMatcher.matches("Open YouTube NOW", "open youtube", RuleMatchMode.PHRASE))
+    }
+
+    @Test
+    fun phraseModeDoesNotMatchInsideLongerUnicodeWord() {
+        assertFalse(RuleMatcher.matches("کتابسلامت", "سلام", RuleMatchMode.PHRASE))
+    }
 }
