@@ -50,7 +50,7 @@ import com.blocker2.app.accessibility.AccessibilityMonitorService
 import com.blocker2.app.startup.StartupPreferences
 
 class MainActivity : ComponentActivity() {
-    private var accessibilityEnabled by mutableStateOf(false)
+    private var accessibilityPermissionEnabled by mutableStateOf(false)
 
     private fun refreshAccessibilityStatus() {
         val expected = ComponentName(this, AccessibilityMonitorService::class.java)
@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ).orEmpty()
-        accessibilityEnabled = enabledServices.split(':').any { flattened ->
+        accessibilityPermissionEnabled = enabledServices.split(':').any { flattened ->
             ComponentName.unflattenFromString(flattened) == expected
         }
     }
@@ -116,7 +116,7 @@ class MainActivity : ComponentActivity() {
             Blocker2Theme {
                 Blocker2App(
                     showNotificationPermissionButton = needsNotificationPermission,
-                    accessibilityEnabled = accessibilityEnabled,
+                    accessibilityPermissionEnabled = accessibilityPermissionEnabled,
                     onRequestNotifications = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -147,7 +147,7 @@ private enum class MainSection(val title: String, val subtitle: String) {
 @androidx.compose.runtime.Composable
 private fun Blocker2App(
     showNotificationPermissionButton: Boolean,
-    accessibilityEnabled: Boolean,
+    accessibilityPermissionEnabled: Boolean,
     onRequestNotifications: () -> Unit,
     onStartVpn: () -> Unit,
     onStopVpn: () -> Unit,
@@ -158,6 +158,9 @@ private fun Blocker2App(
     val commitmentSession by appContext.database.commitmentSessionDao()
         .observeSession().collectAsState(initial = null)
     val commitmentActive = commitmentSession?.expiresAt?.let { it > System.currentTimeMillis() } == true
+    val accessibilityConnected by AccessibilityMonitorService.connectionState.collectAsState()
+    val monitoredApps by appContext.database.monitoredAppDao().observeMonitored().collectAsState(initial = emptyList())
+    val enabledMonitoredAppCount = monitoredApps.count { it.monitoringEnabled }
     val sections = MainSection.entries
 
     Surface(
@@ -213,7 +216,9 @@ private fun Blocker2App(
                 when (sections[selectedSection]) {
                     MainSection.HOME -> HomeOverview(
                         showNotificationPermissionButton = showNotificationPermissionButton,
-                        accessibilityEnabled = accessibilityEnabled,
+                        accessibilityPermissionEnabled = accessibilityPermissionEnabled,
+                        accessibilityConnected = accessibilityConnected,
+                        enabledMonitoredAppCount = enabledMonitoredAppCount,
                         onRequestNotifications = onRequestNotifications,
                         onOpenAccessibilitySettings = onOpenAccessibilitySettings
                     )
@@ -290,7 +295,9 @@ private fun Blocker2App(
 @androidx.compose.runtime.Composable
 private fun HomeOverview(
     showNotificationPermissionButton: Boolean,
-    accessibilityEnabled: Boolean,
+    accessibilityPermissionEnabled: Boolean,
+    accessibilityConnected: Boolean,
+    enabledMonitoredAppCount: Int,
     onRequestNotifications: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit
 ) {
@@ -305,7 +312,15 @@ private fun HomeOverview(
         )
         StatusCard(
             title = "سرویس دسترس‌پذیری",
-            status = if (accessibilityEnabled) "مجوز دسترس‌پذیری برای Blocker2 فعال است." else "مجوز دسترس‌پذیری هنوز فعال نشده است."
+            status = if (accessibilityPermissionEnabled) "مجوز دسترس‌پذیری در تنظیمات اندروید فعال است." else "مجوز دسترس‌پذیری هنوز فعال نشده است."
+        )
+        StatusCard(
+            title = "اتصال زندهٔ سرویس",
+            status = if (accessibilityConnected) "سرویس Accessibility به سیستم متصل است." else "سرویس در حال حاضر اتصال تأییدشده ندارد. فعال بودن مجوز به‌تنهایی به معنی اتصال سرویس نیست."
+        )
+        StatusCard(
+            title = "برنامه‌های تحت نظارت",
+            status = "$enabledMonitoredAppCount برنامه برای پایش انتخاب و فعال شده‌اند. این عدد تعداد برنامه‌های انتخاب‌شده است، نه برنامهٔ در حال اجرا."
         )
         Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
             Text("بازکردن تنظیمات دسترس‌پذیری")
@@ -339,7 +354,7 @@ private fun HomeOverview(
         )
         Spacer(modifier = Modifier.padding(2.dp))
         Text(
-            text = if (accessibilityEnabled) "مجوز دسترس‌پذیری فعال است. برای شروع پایش، برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن." else "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. پس از بازگشت به برنامه، وضعیت مجوز به‌روزرسانی می‌شود.",
+            text = if (accessibilityPermissionEnabled) "مجوز دسترس‌پذیری فعال است. برای شروع پایش، برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن." else "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. پس از بازگشت به برنامه، وضعیت مجوز به‌روزرسانی می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
