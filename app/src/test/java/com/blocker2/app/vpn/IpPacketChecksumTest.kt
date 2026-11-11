@@ -21,8 +21,10 @@ class IpPacketChecksumTest {
     @Test fun internetChecksumSupportsOddLengthAndOffset() {
         val source = byteArrayOf(99, 0x01, 0x02, 0x03, 99)
         val checksum = IpPacketChecksum.internetChecksum(source, start = 1, length = 3)
+
+        // An odd final data byte is padded with zero before the checksum word.
         val paddedWithChecksum = byteArrayOf(
-            source[1], source[2], source[3],
+            source[1], source[2], source[3], 0,
             (checksum ushr 8).toByte(), checksum.toByte()
         )
         assertEquals(0, IpPacketChecksum.internetChecksum(paddedWithChecksum))
