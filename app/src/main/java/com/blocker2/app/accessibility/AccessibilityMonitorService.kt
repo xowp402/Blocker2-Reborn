@@ -71,14 +71,18 @@ class AccessibilityMonitorService : AccessibilityService() {
                 }
             }
 
-            serviceScope.launch {
+            val processingJob = serviceScope.launch {
                 try {
                     processSnapshot(packageName, visibleText)
                 } catch (error: Exception) {
                     Log.e(TAG, "Accessibility snapshot processing failed", error)
-                } finally {
-                    processingGate.release()
                 }
+            }
+            processingJob.invokeOnCompletion { cause ->
+                if (cause != null) {
+                    Log.w(TAG, "Accessibility snapshot job completed exceptionally", cause)
+                }
+                processingGate.release()
             }
             handedOffToCoroutine = true
         } finally {
