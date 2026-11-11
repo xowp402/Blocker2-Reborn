@@ -304,7 +304,7 @@ class LocalDnsVpnService : VpnService() {
         val udpLength = readU16(packet, 44)
         if (udpLength < 8 || udpLength > payloadLength) return null
         val dns = packet.copyOfRange(48, 40 + udpLength)
-        val hostname = readQuestionName(dns) ?: return null
+        val hostname = DnsQuestionParser.readHostname(dns) ?: return null
         return ParsedDnsPacket(
             ipVersion = 6,
             sourceAddress = packet.copyOfRange(8, 24),
