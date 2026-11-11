@@ -107,6 +107,15 @@ class DnsResponseValidatorTest {
         assertFalse(DnsResponseValidator.isMatchingResponse(query, truncated))
     }
 
+    @Test fun rejectsImpossibleRecordCountBeforeWalkingSections() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val response = dnsMessage("example.com", flags = 0x8180).also {
+            it[6] = 0x7f
+            it[7] = 0xff.toByte()
+        }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
+    }
+
     @Test fun rejectsTrailingUndeclaredBytes() {
         val query = dnsMessage("example.com", flags = 0x0100)
         val response = dnsMessage("example.com", flags = 0x8180).append(byteArrayOf(1, 2, 3))

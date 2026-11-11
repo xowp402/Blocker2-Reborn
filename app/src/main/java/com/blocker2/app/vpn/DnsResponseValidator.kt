@@ -50,6 +50,11 @@ internal object DnsResponseValidator {
 
     private fun hasValidRecordSections(packet: ByteArray, questionEnd: Int): Boolean {
         val recordCount = readU16(packet, 6) + readU16(packet, 8) + readU16(packet, 10)
+        // Even the smallest resource record needs a one-byte root owner name
+        // plus the ten-byte fixed RR header. Bound work by bytes actually present
+        // instead of trusting the untrusted 16-bit section counts.
+        val minimumRecordBytes = 1 + RESOURCE_RECORD_FIXED_BYTES
+        if (recordCount > (packet.size - questionEnd) / minimumRecordBytes) return false
         var offset = questionEnd
         repeat(recordCount) {
             offset = skipName(packet, offset) ?: return false
