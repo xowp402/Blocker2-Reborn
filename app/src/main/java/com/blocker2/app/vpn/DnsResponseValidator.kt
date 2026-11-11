@@ -37,13 +37,19 @@ internal object DnsResponseValidator {
 
     private fun questionEnd(packet: ByteArray): Int? {
         var offset = 12
+        var totalNameLength = 0
+        var hasLabel = false
         while (offset < packet.size) {
             val length = packet[offset].toInt() and 0xff
             if (length == 0) {
+                if (!hasLabel) return null
                 val end = offset + 1 + 4
-                return end.takeIf { end <= packet.size }
+                return end.takeIf { it <= packet.size }
             }
             if (length > 63 || (length and 0xc0) != 0 || offset + 1 + length > packet.size) return null
+            totalNameLength += length + 1
+            if (totalNameLength > 255) return null
+            hasLabel = true
             offset += length + 1
         }
         return null
