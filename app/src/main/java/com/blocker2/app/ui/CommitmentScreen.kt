@@ -27,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.blocker2.app.accessibility.TimedBlockExpiry
+import com.blocker2.app.accessibility.TimedBlockTime
 import com.blocker2.app.data.local.dao.CommitmentSessionDao
 import com.blocker2.app.data.local.entity.CommitmentSessionEntity
 import kotlinx.coroutines.delay
@@ -75,7 +77,7 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
         )
 
         if (activeSession != null) {
-            val remaining = (activeSession.expiresAt - now).coerceAtLeast(0L)
+            val remaining = TimedBlockTime.remainingMillis(activeSession.expiresAt, now)
             val hours = TimeUnit.MILLISECONDS.toHours(remaining)
             val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining) % 60
             val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % 60
@@ -151,7 +153,7 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                         dao.saveSession(
                             CommitmentSessionEntity(
                                 startedAt = started,
-                                expiresAt = started + selectedDuration
+                                expiresAt = TimedBlockExpiry.calculate(started, selectedDuration)
                             )
                         )
                     }
