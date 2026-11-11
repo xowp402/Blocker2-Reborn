@@ -76,7 +76,7 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
                 now = now,
                 onExtend = {
                     scope.launch {
-                        val newExpiry = block.expiresAt + EXTENSION_MILLIS
+                        val newExpiry = TimedBlockExpiry.calculate(block.expiresAt, EXTENSION_MILLIS)
                         val updated = dao.extendActive(
                             packageName = block.packageName,
                             newExpiresAt = newExpiry,
@@ -116,7 +116,7 @@ private fun ActiveBlockCard(
             context.packageManager.getApplicationLabel(info).toString()
         }.getOrDefault(block.packageName)
     }
-    val remaining = (block.expiresAt - now).coerceAtLeast(0L)
+    val remaining = TimedBlockTime.remainingMillis(block.expiresAt, now)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(remaining)
     val seconds = TimeUnit.MILLISECONDS.toSeconds(remaining) % 60
 
