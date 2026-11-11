@@ -368,7 +368,7 @@ class LocalDnsVpnService : VpnService() {
         result[9] = IPPROTO_UDP.toByte()
         System.arraycopy(parsed.destinationAddress, 0, result, 12, 4)
         System.arraycopy(parsed.sourceAddress, 0, result, 16, 4)
-        writeU16(result, 10, checksum(result, 0, ipLength))
+        writeU16(result, 10, IpPacketChecksum.internetChecksum(result, 0, ipLength))
         writeU16(result, ipLength, parsed.destinationPort)
         writeU16(result, ipLength + 2, parsed.sourcePort)
         writeU16(result, ipLength + 4, udpLength)
@@ -391,55 +391,15 @@ class LocalDnsVpnService : VpnService() {
         writeU16(result, 44, udpLength)
         writeU16(result, 46, 0)
         System.arraycopy(payload, 0, result, 48, payload.size)
-        val udpChecksum = ipv6UdpChecksum(
+        val udpChecksum = IpPacketChecksum.ipv6UdpChecksum(
             source = parsed.destinationAddress,
             destination = parsed.sourceAddress,
             udpPacket = result,
             udpOffset = 40,
             udpLength = udpLength
         )
-        writeU16(result, 46, if (udpChecksum == 0) 0xffff else udpChecksum)
+        writeU16(result, 46, udpChecksum)
         return result
-    }
-
-    private fun ipv6UdpChecksum(
-        source: ByteArray,
-        destination: ByteArray,
-        udpPacket: ByteArray,
-        udpOffset: Int,
-        udpLength: Int
-    ): Int {
-        var sum = 0L
-        fun addBytes(bytes: ByteArray, start: Int = 0, length: Int = bytes.size) {
-            var i = start
-            val end = start + length
-            while (i + 1 < end) {
-                sum += (((bytes[i].toInt() and 0xff) shl 8) or (bytes[i + 1].toInt() and 0xff)).toLong()
-                i += 2
-            }
-            if (i < end) sum += ((bytes[i].toInt() and 0xff) shl 8).toLong()
-        }
-        addBytes(source)
-        addBytes(destination)
-        sum += ((udpLength ushr 16) and 0xffff).toLong()
-        sum += (udpLength and 0xffff).toLong()
-        sum += IPPROTO_UDP.toLong()
-        addBytes(udpPacket, udpOffset, udpLength)
-        while ((sum ushr 16) != 0L) sum = (sum and 0xffff) + (sum ushr 16)
-        return sum.inv().toInt() and 0xffff
-    }
-
-    private fun checksum(data: ByteArray, start: Int, length: Int): Int {
-        var sum = 0L
-        var index = start
-        val end = start + length
-        while (index + 1 < end) {
-            sum += (((data[index].toInt() and 0xff) shl 8) or (data[index + 1].toInt() and 0xff)).toLong()
-            index += 2
-        }
-        if (index < end) sum += ((data[index].toInt() and 0xff) shl 8).toLong()
-        while ((sum ushr 16) != 0L) sum = (sum and 0xffff) + (sum ushr 16)
-        return sum.inv().toInt() and 0xffff
     }
 
     private fun readU16(data: ByteArray, offset: Int): Int =
