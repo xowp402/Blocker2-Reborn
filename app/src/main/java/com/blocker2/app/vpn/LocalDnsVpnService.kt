@@ -355,59 +355,22 @@ class LocalDnsVpnService : VpnService() {
         request: ByteArray,
         payload: ByteArray
     ): ByteArray = if (parsed.ipVersion == 6) {
-        buildIpv6UdpResponse(parsed, payload)
-    } else {
-        buildIpv4UdpResponse(parsed, request, payload)
-    }
-
-    private fun buildIpv4UdpResponse(
-        parsed: ParsedDnsPacket,
-        request: ByteArray,
-        payload: ByteArray
-    ): ByteArray {
-        val ipLength = 20
-        val udpLength = 8 + payload.size
-        val result = ByteArray(ipLength + udpLength)
-        result[0] = 0x45
-        writeU16(result, 2, result.size)
-        writeU16(result, 4, parsed.identification)
-        writeU16(result, 6, 0x4000)
-        result[8] = 64
-        result[9] = IPPROTO_UDP.toByte()
-        System.arraycopy(parsed.destinationAddress, 0, result, 12, 4)
-        System.arraycopy(parsed.sourceAddress, 0, result, 16, 4)
-        writeU16(result, 10, IpPacketChecksum.internetChecksum(result, 0, ipLength))
-        writeU16(result, ipLength, parsed.destinationPort)
-        writeU16(result, ipLength + 2, parsed.sourcePort)
-        writeU16(result, ipLength + 4, udpLength)
-        writeU16(result, ipLength + 6, 0)
-        System.arraycopy(payload, 0, result, ipLength + 8, payload.size)
-        return result
-    }
-
-    private fun buildIpv6UdpResponse(parsed: ParsedDnsPacket, payload: ByteArray): ByteArray {
-        val udpLength = 8 + payload.size
-        val result = ByteArray(40 + udpLength)
-        result[0] = 0x60
-        writeU16(result, 4, udpLength)
-        result[6] = IPPROTO_UDP.toByte()
-        result[7] = 64
-        System.arraycopy(parsed.destinationAddress, 0, result, 8, 16)
-        System.arraycopy(parsed.sourceAddress, 0, result, 24, 16)
-        writeU16(result, 40, parsed.destinationPort)
-        writeU16(result, 42, parsed.sourcePort)
-        writeU16(result, 44, udpLength)
-        writeU16(result, 46, 0)
-        System.arraycopy(payload, 0, result, 48, payload.size)
-        val udpChecksum = IpPacketChecksum.ipv6UdpChecksum(
-            source = parsed.destinationAddress,
-            destination = parsed.sourceAddress,
-            udpPacket = result,
-            udpOffset = 40,
-            udpLength = udpLength
+        DnsIpPacketBuilder.buildIpv6Response(
+            sourceAddress = parsed.destinationAddress,
+            destinationAddress = parsed.sourceAddress,
+            sourcePort = parsed.destinationPort,
+            destinationPort = parsed.sourcePort,
+            payload = payload
         )
-        writeU16(result, 46, udpChecksum)
-        return result
+    } else {
+        DnsIpPacketBuilder.buildIpv4Response(
+            sourceAddress = parsed.destinationAddress,
+            destinationAddress = parsed.sourceAddress,
+            sourcePort = parsed.destinationPort,
+            destinationPort = parsed.sourcePort,
+            identification = parsed.identification,
+            payload = payload
+        )
     }
 
     private fun readU16(data: ByteArray, offset: Int): Int =
