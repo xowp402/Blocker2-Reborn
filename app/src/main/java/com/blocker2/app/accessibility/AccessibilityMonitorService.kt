@@ -17,6 +17,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -29,6 +32,7 @@ class AccessibilityMonitorService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        _connectionState.value = true
         Log.i(TAG, "Accessibility monitoring connected")
     }
 
@@ -306,6 +310,9 @@ class AccessibilityMonitorService : AccessibilityService() {
     }
 
     companion object {
+        private val _connectionState = MutableStateFlow(false)
+        val connectionState: StateFlow<Boolean> = _connectionState.asStateFlow()
+
         private const val TAG = "Blocker2.Accessibility"
         private const val MIN_SCAN_INTERVAL_MS = 350L
         private const val MATCH_COOLDOWN_MS = 2_000L
