@@ -120,24 +120,31 @@ class AccessibilityMonitorService : AccessibilityService() {
 
         val commitment = app.database.commitmentSessionDao().getSession()
         if (commitment != null && commitment.expiresAt > now) {
-            if (commitmentCooldown.tryAcquire(packageName, now, COMMITMENT_ENFORCEMENT_COOLDOWN_MS)) {
-                app.database.activityLogDao().insert(
-                    ActivityLogEntity(
-                        occurredAt = now,
-                        sourcePackage = packageName,
-                        sourceLabel = monitored.appName,
-                        ruleType = "COMMITMENT",
-                        matchedValue = "Personal commitment session",
-                        reaction = "EXIT_ONLY",
-                        durationMillis = TimedBlockTime.remainingMillis(commitment.expiresAt, now),
-                        outcome = "COMMITMENT_ENFORCED"
-                    )
-                )
-            }
-            // Cooldown limits duplicate log entries, never enforcement itself.
+            // Enforce the commitment before attempting any best-effort analytics write.
+            // A full disk or database error must never prevent the HOME action.
             withContext(Dispatchers.Main) {
                 if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
                     Log.w(TAG, "Android rejected HOME action during commitment mode")
+                }
+            }
+
+            // Cooldown limits duplicate log entries, never enforcement itself.
+            if (commitmentCooldown.tryAcquire(packageName, now, COMMITMENT_ENFORCEMENT_COOLDOWN_MS)) {
+                try {
+                    app.database.activityLogDao().insert(
+                        ActivityLogEntity(
+                            occurredAt = now,
+                            sourcePackage = packageName,
+                            sourceLabel = monitored.appName,
+                            ruleType = "COMMITMENT",
+                            matchedValue = "Personal commitment session",
+                            reaction = "EXIT_ONLY",
+                            durationMillis = TimedBlockTime.remainingMillis(commitment.expiresAt, now),
+                            outcome = "COMMITMENT_ENFORCED"
+                        )
+                    )
+                } catch (error: Exception) {
+                    Log.w(TAG, "Could not record commitment enforcement; restriction was already applied", error)
                 }
             }
             return
