@@ -165,7 +165,7 @@ class DnsResponseValidatorTest {
 
     @Test fun rejectsOptRecordOutsideAdditionalSection() {
         val query = dnsMessage("example.com", flags = 0x0100)
-        val opt = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0, 0)
+        val opt = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0)
 
         val inAnswer = dnsMessage("example.com", flags = 0x8180).append(opt).also { it[7] = 1 }
         assertFalse(DnsResponseValidator.isMatchingResponse(query, inAnswer))
