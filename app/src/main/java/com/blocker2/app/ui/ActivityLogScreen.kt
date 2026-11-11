@@ -30,11 +30,24 @@ import com.blocker2.app.data.local.entity.ActivityLogEntity
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 
 @Composable
 fun ActivityLogScreen(dao: ActivityLogDao) {
     val entries by dao.observeRecent(300).collectAsState(initial = emptyList())
+    val todayStart = remember {
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val todayTotal by dao.observeCountSince(todayStart).collectAsState(initial = 0)
+    val todayWords by dao.observeCountSinceForType(todayStart, "WORD").collectAsState(initial = 0)
+    val todayTelegram by dao.observeCountSinceForType(todayStart, "TELEGRAM").collectAsState(initial = 0)
+    val todayCommitment by dao.observeCountSinceForType(todayStart, "COMMITMENT").collectAsState(initial = 0)
     var search by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -84,6 +97,26 @@ fun ActivityLogScreen(dao: ActivityLogDao) {
             placeholder = { Text("نام برنامه، واژه یا واکنش") },
             singleLine = true
         )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Text("خلاصهٔ امروز", style = MaterialTheme.typography.titleSmall)
+                Text("مجموع رویدادهای ثبت‌شده: $todayTotal")
+                Text("شناسایی واژه‌ها: $todayWords  •  تلگرام: $todayTelegram")
+                Text("اجرای حالت تعهد: $todayCommitment")
+                Text(
+                    "بر اساس زمان محلی دستگاه؛ هر ردیف گزارش یک تطبیق ثبت‌شده است، نه الزاماً یک بار بازشدن برنامه.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         if (filteredEntries.isEmpty()) {
             Card(
@@ -199,6 +232,7 @@ private fun ruleTypeLabel(value: String): String = when (value.uppercase(Locale.
     "WORD" -> "واژه"
     "TELEGRAM" -> "تلگرام"
     "SITE" -> "سایت"
+    "COMMITMENT" -> "حالت تعهد"
     else -> value
 }
 
@@ -214,5 +248,6 @@ private fun outcomeLabel(value: String): String = when (value.uppercase(Locale.R
     "DETECTED" -> "شناسایی شد"
     "EXIT_REQUESTED" -> "درخواست خروج"
     "TEMPORARY_BLOCK_STARTED" -> "مسدودی آغاز شد"
+    "COMMITMENT_ENFORCED" -> "تعهد اجرا شد"
     else -> value
 }
