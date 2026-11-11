@@ -293,10 +293,8 @@ class AccessibilityMonitorService : AccessibilityService() {
             packageName == "org.thunderdog.challegram" ||
             packageName == "nekox.messenger"
 
-    private fun isRuleTargetedAt(rule: WordRuleEntity, packageName: String): Boolean {
-        val configured = rule.targetPackages.split("|").map(String::trim).filter(String::isNotEmpty)
-        return configured.isEmpty() || packageName in configured
-    }
+    private fun isRuleTargetedAt(rule: WordRuleEntity, packageName: String): Boolean =
+        PackageTargetMatcher.matches(rule.targetPackages, packageName)
 
     private fun collectVisibleText(root: AccessibilityNodeInfo): String {
         val result = StringBuilder()
