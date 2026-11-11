@@ -73,7 +73,10 @@ class LocalDnsVpnService : VpnService() {
 
         val descriptor = Builder()
             .setSession("Blocker2 local DNS filter")
-            .setMtu(1500)
+            // The upstream DNS socket accepts up to 4096-byte DNS messages.
+            // Leave room for the largest supported UDP/IP headers so the TUN
+            // interface can deliver the complete response without IP fragmentation.
+            .setMtu(TUN_MTU)
             .setBlocking(true)
             .addAddress(TUN_ADDRESS, 32)
             .addDnsServer(DNS_ADDRESS)
@@ -188,7 +191,7 @@ class LocalDnsVpnService : VpnService() {
                     socket.soTimeout = UPSTREAM_TIMEOUT_MS
                     val server = InetAddress.getByName(upstream)
                     socket.send(DatagramPacket(query, query.size, server, DNS_PORT))
-                    val responseBuffer = ByteArray(4096)
+                    val responseBuffer = ByteArray(MAX_UPSTREAM_DNS_RESPONSE_BYTES)
                     val response = DatagramPacket(responseBuffer, responseBuffer.size)
                     socket.receive(response)
                     val responseBytes = response.data.copyOfRange(
@@ -400,6 +403,9 @@ class LocalDnsVpnService : VpnService() {
         private val UPSTREAM_DNS_SERVERS = arrayOf("1.1.1.1", "8.8.8.8")
         private const val DNS_PORT = 53
         private const val IPPROTO_UDP = 17
+        private const val MAX_UPSTREAM_DNS_RESPONSE_BYTES = 4096
+        // IPv6 adds 40-byte IP + 8-byte UDP headers to the maximum DNS payload.
+        private const val TUN_MTU = MAX_UPSTREAM_DNS_RESPONSE_BYTES + 48
         private const val UPSTREAM_TIMEOUT_MS = 3000
     }
 }
