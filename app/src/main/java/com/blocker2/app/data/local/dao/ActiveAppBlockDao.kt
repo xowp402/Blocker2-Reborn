@@ -20,8 +20,17 @@ interface ActiveAppBlockDao {
     @Query("DELETE FROM active_app_blocks WHERE expiresAt <= :now")
     suspend fun deleteExpired(now: Long): Int
 
-    @Query("UPDATE active_app_blocks SET expiresAt = :newExpiresAt WHERE packageName = :packageName AND expiresAt > :now")
-    suspend fun extendActive(packageName: String, newExpiresAt: Long, now: Long): Int
+    @Query(
+        """
+        UPDATE active_app_blocks
+        SET expiresAt = CASE
+            WHEN expiresAt > 9223372036854775807 - :extensionMillis THEN 9223372036854775807
+            ELSE expiresAt + :extensionMillis
+        END
+        WHERE packageName = :packageName AND expiresAt > :now
+        """
+    )
+    suspend fun extendActive(packageName: String, extensionMillis: Long, now: Long): Int
 
     @Query("DELETE FROM active_app_blocks WHERE packageName = :packageName")
     suspend fun clearForPackage(packageName: String): Int
