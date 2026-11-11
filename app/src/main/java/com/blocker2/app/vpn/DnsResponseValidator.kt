@@ -49,30 +49,65 @@ internal object DnsResponseValidator {
     }
 
     private fun hasValidRecordSections(packet: ByteArray, questionEnd: Int): Boolean {
-        val recordCount = readU16(packet, 6) + readU16(packet, 8) + readU16(packet, 10)
-        // Even the smallest resource record needs a one-byte root owner name
-        // plus the ten-byte fixed RR header. Bound work by bytes actually present
-        // instead of trusting the untrusted 16-bit section counts.
-        val minimumRecordBytes = 1 + RESOURCE_RECORD_FIXED_BYTES
-        if (recordCount > (packet.size - questionEnd) / minimumRecordBytes) return false
+        val answerCount = readU16(packet, 6)
+        val authorityCount = readU16(packet, 8)
+        val additionalCount = readU16(packet, 10)
+        val recordCount = answerCount + authorityCount + additionalCount
+        // Bound the amount of record parsing by the bytes available.
+        if (recordCount > (packet.size - questionEnd) / MINIMUM_RECORD_BYTES) return false
+
+        val optSeen = booleanArrayOf(false)
         var offset = questionEnd
-        repeat(recordCount) {
-            offset = skipName(packet, offset) ?: return false
-            // TYPE, CLASS, TTL and RDLENGTH.
-            if (offset > packet.size - RESOURCE_RECORD_FIXED_BYTES) return false
+        offset = parseRecordSection(packet, offset, answerCount, isAdditional = false, optSeen) ?: return false
+        offset = parseRecordSection(packet, offset, authorityCount, isAdditional = false, optSeen) ?: return false
+        offset = parseRecordSection(packet, offset, additionalCount, isAdditional = true, optSeen) ?: return false
+        return offset == packet.size
+    }
+
+    private fun parseRecordSection(
+        packet: ByteArray,
+        start: Int,
+        count: Int,
+        isAdditional: Boolean,
+        optSeen: BooleanArray
+    ): Int? {
+        var offset = start
+        repeat(count) {
+            val owner = skipName(packet, offset) ?: return null
+            offset = owner.nextOffset
+            if (offset > packet.size - RESOURCE_RECORD_FIXED_BYTES) return null
+
+            val type = readU16(packet, offset)
             val dataLength = readU16(packet, offset + 8)
             offset += RESOURCE_RECORD_FIXED_BYTES
-            if (dataLength > packet.size - offset) return false
-            offset += dataLength
+            if (dataLength > packet.size - offset) return null
+
+            if (type == OPT_TYPE) {
+                // EDNS OPT is a pseudo-record: it belongs only in Additional,
+                // has a literal root owner and may occur at most once.
+                if (!isAdditional || !owner.isUncompressedRoot || optSeen[0]) return null
+                optSeen[0] = true
+                val dataEnd = offset + dataLength
+                while (offset < dataEnd) {
+                    if (offset > dataEnd - EDNS_OPTION_HEADER_BYTES) return null
+                    val optionLength = readU16(packet, offset + 2)
+                    offset += EDNS_OPTION_HEADER_BYTES
+                    if (optionLength > dataEnd - offset) return null
+                    offset += optionLength
+                }
+                if (offset != dataEnd) return null
+            } else {
+                offset += dataLength
+            }
         }
-        return offset == packet.size
+        return offset
     }
 
     /**
      * Skips a possibly compressed DNS name. Compression pointers must refer
      * backward into the DNS message, as required by the DNS wire format.
      */
-    private fun skipName(packet: ByteArray, start: Int): Int? {
+    private data class NameInfo(val nextOffset: Int, val isUncompressedRoot: Boolean)\n\n    private fun skipName(packet: ByteArray, start: Int): NameInfo? {
         if (start !in packet.indices) return null
         var offset = start
         var nextOffset: Int? = null
@@ -85,7 +120,7 @@ internal object DnsResponseValidator {
                 length == 0 -> {
                     expandedLength++
                     if (expandedLength > MAX_NAME_LENGTH) return null
-                    return nextOffset ?: (offset + 1)
+                    return NameInfo(\n                        nextOffset ?: (offset + 1),\n                        isUncompressedRoot = offset == start && offset == start && packet[start] == 0.toByte()\n                    )
                 }
                 (length and 0xc0) == 0xc0 -> {
                     if (offset + 1 >= packet.size) return null
@@ -137,7 +172,7 @@ internal object DnsResponseValidator {
 
     private const val DNS_HEADER_SIZE = 12
     private const val QUESTION_TAIL_SIZE = 4
-    private const val RESOURCE_RECORD_FIXED_BYTES = 10
+    private const val RESOURCE_RECORD_FIXED_BYTES = 10\n    private const val MINIMUM_RECORD_BYTES = 11\n    private const val EDNS_OPTION_HEADER_BYTES = 4\n    private const val OPT_TYPE = 41
     private const val MAX_LABEL_LENGTH = 63
     private const val MAX_NAME_LENGTH = 255
     private const val QR_MASK = 0x8000

@@ -163,6 +163,40 @@ class DnsResponseValidatorTest {
         assertFalse(DnsResponseValidator.isMatchingResponse(query, response))
     }
 
+    @Test fun rejectsOptRecordOutsideAdditionalSection() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val opt = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0, 0)
+
+        val inAnswer = dnsMessage("example.com", flags = 0x8180).append(opt).also { it[7] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, inAnswer))
+
+        val inAuthority = dnsMessage("example.com", flags = 0x8180).append(opt).also { it[9] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, inAuthority))
+    }
+
+    @Test fun rejectsDuplicateOptRecordsAndNonRootOwner() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val opt = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0, 0)
+        val duplicate = dnsMessage("example.com", flags = 0x8180).append(opt + opt).also { it[11] = 2 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, duplicate))
+
+        val nonRoot = dnsMessage("example.com", flags = 0x8180).append(
+            byteArrayOf(1, 120, 0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 0)
+        ).also { it[11] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, nonRoot))
+    }
+
+    @Test fun rejectsMalformedEdnsOptionHeaderAndPayload() {
+        val query = dnsMessage("example.com", flags = 0x0100)
+        val shortHeader = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 2, 0, 12)
+        val headerResponse = dnsMessage("example.com", flags = 0x8180).append(shortHeader).also { it[11] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, headerResponse))
+
+        val shortPayload = byteArrayOf(0, 0, 41, 4, 0xD0.toByte(), 0, 0, 0, 0, 0, 5, 0, 12, 0, 2, 1)
+        val payloadResponse = dnsMessage("example.com", flags = 0x8180).append(shortPayload).also { it[11] = 1 }
+        assertFalse(DnsResponseValidator.isMatchingResponse(query, payloadResponse))
+    }
+
     private fun dnsMessage(host: String, flags: Int, type: Int = 1): ByteArray {
         val name = host.split(".").flatMap { label ->
             listOf(label.length.toByte()) + label.toByteArray(Charsets.US_ASCII).toList()
