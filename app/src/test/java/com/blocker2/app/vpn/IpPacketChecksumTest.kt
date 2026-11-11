@@ -19,11 +19,13 @@ class IpPacketChecksumTest {
     }
 
     @Test fun internetChecksumSupportsOddLengthAndOffset() {
-        val data = byteArrayOf(99, 0x01, 0x02, 0x03, 0x04, 0x05, 99)
-        val checksum = IpPacketChecksum.internetChecksum(data, start = 1, length = 5)
-        data[5] = checksum.toByte()
-        data[4] = (checksum ushr 8).toByte()
-        assertEquals(0, IpPacketChecksum.internetChecksum(data, start = 1, length = 5))
+        val source = byteArrayOf(99, 0x01, 0x02, 0x03, 99)
+        val checksum = IpPacketChecksum.internetChecksum(source, start = 1, length = 3)
+        val paddedWithChecksum = byteArrayOf(
+            source[1], source[2], source[3],
+            (checksum ushr 8).toByte(), checksum.toByte()
+        )
+        assertEquals(0, IpPacketChecksum.internetChecksum(paddedWithChecksum))
     }
 
     @Test fun ipv6UdpChecksumVerifiesPseudoHeaderAndOddPayload() {
