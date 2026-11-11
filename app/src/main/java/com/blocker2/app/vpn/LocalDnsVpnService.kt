@@ -270,13 +270,18 @@ class LocalDnsVpnService : VpnService() {
     private fun parseIpv4DnsPacket(packet: ByteArray): ParsedDnsPacket? {
         if (packet.size < 28) return null
         val ipHeaderLength = (packet[0].toInt() and 0x0f) * 4
+        val totalLength = readU16(packet, 2)
         if (ipHeaderLength < 20 || packet.size < ipHeaderLength + 8) return null
+        if (!IpPacketValidator.isValidIpv4Header(packet, totalLength)) return null
         if ((packet[9].toInt() and 0xff) != IPPROTO_UDP) return null
         val sourcePort = readU16(packet, ipHeaderLength)
         val destinationPort = readU16(packet, ipHeaderLength + 2)
         if (destinationPort != DNS_PORT) return null
         val udpLength = readU16(packet, ipHeaderLength + 4)
-        if (udpLength < 8 || packet.size < ipHeaderLength + udpLength) return null
+        if (udpLength != totalLength - ipHeaderLength ||
+            !IpPacketValidator.isValidUdpLength(packet, ipHeaderLength, udpLength, totalLength - ipHeaderLength) ||
+            !IpPacketValidator.isValidIpv4UdpChecksum(packet, ipHeaderLength, totalLength)
+        ) return null
         val dnsStart = ipHeaderLength + 8
         val dns = packet.copyOfRange(dnsStart, ipHeaderLength + udpLength)
         val hostname = DnsQuestionParser.readHostname(dns) ?: return null
@@ -302,7 +307,10 @@ class LocalDnsVpnService : VpnService() {
         val destinationPort = readU16(packet, 42)
         if (destinationPort != DNS_PORT) return null
         val udpLength = readU16(packet, 44)
-        if (udpLength < 8 || udpLength > payloadLength) return null
+        if (udpLength != payloadLength ||
+            !IpPacketValidator.isValidUdpLength(packet, 40, udpLength, payloadLength) ||
+            !IpPacketValidator.isValidIpv6UdpChecksum(packet, 40, udpLength)
+        ) return null
         val dns = packet.copyOfRange(48, 40 + udpLength)
         val hostname = DnsQuestionParser.readHostname(dns) ?: return null
         return ParsedDnsPacket(
