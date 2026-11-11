@@ -23,6 +23,17 @@ class IpPacketValidatorTest {
         assertFalse(IpPacketValidator.isExactIpv6PacketLength(ByteArray(48), -1))
     }
 
+    @Test fun acceptsOnlyDirectUdpAsIpv6NextHeader() {
+        assertTrue(IpPacketValidator.isDirectIpv6Udp(17))
+
+        // IPv6 extension-header protocol numbers must never be mistaken for UDP.
+        for (nextHeader in listOf(0, 43, 44, 50, 51, 60, 135, 139, 140)) {
+            assertFalse("nextHeader=$nextHeader", IpPacketValidator.isDirectIpv6Udp(nextHeader))
+        }
+        assertFalse(IpPacketValidator.isDirectIpv6Udp(-1))
+        assertFalse(IpPacketValidator.isDirectIpv6Udp(256))
+    }
+
     @Test fun rejectsIpv4FragmentsAndReservedFlag() {
         for (fragmentField in listOf(0x2000, 0x0001, 0x8000)) {
             val packet = ipv4Packet()

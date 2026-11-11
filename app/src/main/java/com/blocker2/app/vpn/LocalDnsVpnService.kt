@@ -325,9 +325,11 @@ class LocalDnsVpnService : VpnService() {
     }
 
     private fun parseIpv6DnsPacket(packet: ByteArray): ParsedDnsPacket? {
-        // This implementation intentionally accepts only the base IPv6 header
-        // with UDP as its immediate next-header. Extension headers are not parsed.
-        if (packet.size < 48 || (packet[6].toInt() and 0xff) != IPPROTO_UDP) return null
+        // Extension headers are deliberately rejected by the validator below.
+        // Returning null makes the packet loop disable only the site VPN (fail-open).
+        if (packet.size < 48 ||
+            !IpPacketValidator.isDirectIpv6Udp(packet[6].toInt() and 0xff)
+        ) return null
         val payloadLength = readU16(packet, 4)
         if (payloadLength < 8 || !IpPacketValidator.isExactIpv6PacketLength(packet, payloadLength)) return null
         val sourcePort = readU16(packet, 40)

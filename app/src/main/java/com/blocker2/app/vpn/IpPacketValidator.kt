@@ -21,6 +21,14 @@ internal object IpPacketValidator {
         return true
     }
 
+    /**
+     * The current tunnel parser accepts only UDP immediately after the IPv6 base
+     * header. Extension headers (including fragments and AH/ESP) are unsupported
+     * and must trigger the service's fail-open path rather than be misparsed.
+     */
+    fun isDirectIpv6Udp(nextHeader: Int): Boolean =
+        nextHeader in 0..255 && nextHeader == IPPROTO_UDP
+
     /** IPv6 payload length must describe the complete packet, with no trailing bytes. */
     fun isExactIpv6PacketLength(packet: ByteArray, payloadLength: Int): Boolean {
         if (packet.size < IPV6_HEADER_SIZE || payloadLength < 0) return false
