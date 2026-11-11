@@ -31,6 +31,23 @@ class SiteRuleMatcherTest {
         assertEquals(SiteRuleMatcher.Decision.PASS, SiteRuleMatcher.evaluate("www.example.com", emptyList(), listOf(allowed)))
     }
 
+    @Test fun unicodeDomainAndPunycodeNormalizeToSameHost() {
+        val rule = SiteRuleEntity(ruleType = "DOMAIN", pattern = "مثال.ایران", normalizedPattern = "مثال.ایران")
+        assertEquals(SiteRuleMatcher.Decision.BLOCK, SiteRuleMatcher.evaluate("xn--mgbh0fb.xn--mgba3a4f16a", listOf(rule), emptyList()))
+        assertEquals("xn--mgbh0fb.xn--mgba3a4f16a", SiteRuleMatcher.normalizeHost("مثال.ایران."))
+    }
+
+    @Test fun malformedHostInputIsRejected() {
+        assertEquals("", SiteRuleMatcher.normalizeHost("https://example.com/path"))
+        assertEquals("", SiteRuleMatcher.normalizeHost("example.com:443"))
+        assertEquals("", SiteRuleMatcher.normalizeHost("bad..example.com"))
+    }
+
+    @Test fun caseAndTrailingRootDotAreNormalized() {
+        val rule = SiteRuleEntity(ruleType = "DOMAIN", pattern = "Example.COM", normalizedPattern = "Example.COM")
+        assertEquals(SiteRuleMatcher.Decision.BLOCK, SiteRuleMatcher.evaluate("EXAMPLE.com.", listOf(rule), emptyList()))
+    }
+
     @Test fun urlPrefixCannotMatchDnsHostname() {
         val rule = SiteRuleEntity(ruleType = "URL_PREFIX", pattern = "example.com/private", normalizedPattern = "example.com/private")
         assertEquals(SiteRuleMatcher.Decision.PASS, SiteRuleMatcher.evaluate("example.com", listOf(rule), emptyList()))
