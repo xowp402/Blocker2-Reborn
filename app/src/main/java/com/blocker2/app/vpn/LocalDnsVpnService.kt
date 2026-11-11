@@ -111,10 +111,14 @@ class LocalDnsVpnService : VpnService() {
         if (!running.get()) return
         val descriptor = tunnel ?: return
         worker = Thread({
-            val input = FileInputStream(descriptor.fileDescriptor)
-            val output = FileOutputStream(descriptor.fileDescriptor)
+            var input: FileInputStream? = null
+            var output: FileOutputStream? = null
             val packetBuffer = ByteArray(32767)
             try {
+                // Create both streams inside the guarded region. If either
+                // constructor fails, the finally block still releases the VPN.
+                input = FileInputStream(descriptor.fileDescriptor)
+                output = FileOutputStream(descriptor.fileDescriptor)
                 while (running.get()) {
                     val length = input.read(packetBuffer)
                     if (length <= 0) continue
@@ -155,8 +159,14 @@ class LocalDnsVpnService : VpnService() {
             } catch (error: Exception) {
                 if (running.get()) android.util.Log.e(TAG, "DNS packet loop stopped", error)
             } finally {
-                input.close()
-                output.close()
+                // Closing either stream can fail if stopVpn already closed the
+                // shared descriptor. Attempt both closes independently.
+                try { input?.close() } catch (error: Exception) {
+                    android.util.Log.w(TAG, "Error closing DNS input stream", error)
+                }
+                try { output?.close() } catch (error: Exception) {
+                    android.util.Log.w(TAG, "Error closing DNS output stream", error)
+                }
                 if (running.get()) stopVpn()
             }
         }, "Blocker2-DNS-TUN").apply {
