@@ -277,11 +277,11 @@ class AccessibilityMonitorService : AccessibilityService() {
                 visited++
                 try {
                     if (!node.isPassword) {
-                        node.text?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
-                        node.contentDescription?.toString()?.takeIf(String::isNotBlank)?.let { result.append(it).append(" ") }
+                        appendLimited(result, node.text)
+                        appendLimited(result, node.contentDescription)
                     }
                     for (index in 0 until node.childCount) {
-                        if (visited + stack.size >= MAX_NODES) break
+                        if (result.length >= MAX_TEXT_LENGTH || visited + stack.size >= MAX_NODES) break
                         val child = node.getChild(index) ?: continue
                         stack.add(child)
                     }
@@ -300,6 +300,14 @@ class AccessibilityMonitorService : AccessibilityService() {
             }
         }
         return result.toString().take(MAX_TEXT_LENGTH)
+    }
+
+    private fun appendLimited(target: StringBuilder, value: CharSequence?) {
+        if (value.isNullOrBlank() || target.length >= MAX_TEXT_LENGTH) return
+        val remaining = MAX_TEXT_LENGTH - target.length
+        val charsToAppend = minOf(value.length, remaining)
+        target.append(value, 0, charsToAppend)
+        if (target.length < MAX_TEXT_LENGTH) target.append(' ')
     }
 
     override fun onInterrupt() {
