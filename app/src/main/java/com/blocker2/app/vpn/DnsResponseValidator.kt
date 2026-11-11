@@ -60,13 +60,12 @@ internal object DnsResponseValidator {
             if (dataLength > packet.size - offset) return false
             offset += dataLength
         }
-        // Reject undeclared trailing bytes as well as truncated records.
         return offset == packet.size
     }
 
     /**
-     * Skips a possibly compressed DNS name. The returned offset is the byte
-     * immediately after the encoded name at its original location.
+     * Skips a possibly compressed DNS name. Compression pointers must refer
+     * backward into the DNS message, as required by the DNS wire format.
      */
     private fun skipName(packet: ByteArray, start: Int): Int? {
         if (start !in packet.indices) return null
@@ -87,9 +86,9 @@ internal object DnsResponseValidator {
                     if (offset + 1 >= packet.size) return null
                     val pointer = ((length and 0x3f) shl 8) or
                         (packet[offset + 1].toInt() and 0xff)
-                    if (pointer >= packet.size || !visitedPointers.add(pointer)) return null
-                    expandedLength += 2
-                    if (expandedLength > MAX_NAME_LENGTH) return null
+                    if (pointer < DNS_HEADER_SIZE || pointer >= offset ||
+                        !visitedPointers.add(pointer)
+                    ) return null
                     if (nextOffset == null) nextOffset = offset + 2
                     offset = pointer
                 }
