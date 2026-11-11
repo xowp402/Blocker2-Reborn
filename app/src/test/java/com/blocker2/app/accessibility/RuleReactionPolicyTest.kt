@@ -61,4 +61,18 @@ class RuleReactionPolicyTest {
         assertTrue(result.requiresExit)
         assertTrue(result.startsTimedBlock)
     }
+
+    @Test
+    fun reactionMatchingIgnoresSurroundingWhitespace() {
+        val result = RuleReactionPolicy.evaluate("  TEMPORARY_BLOCK  ", 1_000L, false)
+        assertTrue(result.requiresExit)
+        assertTrue(result.startsTimedBlock)
+    }
+
+    @Test
+    fun negativeDurationDoesNotStartTimedBlock() {
+        val result = RuleReactionPolicy.evaluate("WARN_AND_EXIT", -1L, false)
+        assertTrue(result.requiresExit)
+        assertFalse(result.startsTimedBlock)
+    }
 }
