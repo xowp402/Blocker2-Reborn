@@ -182,34 +182,38 @@ class LocalDnsVpnService : VpnService() {
 
     private fun forwardDns(query: ByteArray): ByteArray? {
         if (query.size < 12) return null
-        for (upstream in UPSTREAM_DNS_SERVERS) {
+        return DnsUpstreamRetryPolicy.firstValidResponse(UPSTREAM_DNS_SERVERS.toList()) { upstream ->
             try {
                 val responseBytes = DatagramSocket().use { socket ->
-                    if (!protect(socket)) return null
+                    // A socket that cannot be protected could feed the VPN back into itself.
+                    // This is a global safety failure, not a reason to try another resolver.
+                    if (!protect(socket)) {
+                        return@firstValidResponse DnsUpstreamRetryPolicy.AttemptResult.Abort
+                    }
                     socket.soTimeout = UPSTREAM_TIMEOUT_MS
                     val server = InetAddress.getByName(upstream)
                     socket.send(DatagramPacket(query, query.size, server, DNS_PORT))
                     val responseBuffer = ByteArray(DnsTunnelSizing.MAX_UPSTREAM_DNS_RESPONSE_BYTES)
                     val response = DatagramPacket(responseBuffer, responseBuffer.size)
                     socket.receive(response)
-                    val responseBytes = response.data.copyOfRange(
+                    val bytes = response.data.copyOfRange(
                         response.offset,
                         response.offset + response.length
                     )
                     if (response.address != server || response.port != DNS_PORT ||
-                        !DnsResponseValidator.isMatchingResponse(query, responseBytes)
-                    ) {
-                        null
-                    } else {
-                        responseBytes
-                    }
+                        !DnsResponseValidator.isMatchingResponse(query, bytes)
+                    ) null else bytes
                 }
-                if (responseBytes != null) return responseBytes
+                if (responseBytes == null) {
+                    DnsUpstreamRetryPolicy.AttemptResult.Retry
+                } else {
+                    DnsUpstreamRetryPolicy.AttemptResult.Success(responseBytes)
+                }
             } catch (error: Exception) {
                 android.util.Log.w(TAG, "DNS upstream $upstream failed", error)
+                DnsUpstreamRetryPolicy.AttemptResult.Retry
             }
         }
-        return null
     }
 
     private fun buildNotification(): Notification {
