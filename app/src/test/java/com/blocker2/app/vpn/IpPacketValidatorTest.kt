@@ -14,6 +14,15 @@ class IpPacketValidatorTest {
         assertFalse(IpPacketValidator.isValidIpv4Header(packet, packet.size - 1))
     }
 
+    @Test fun rejectsIpv4TrailingBytesAndRequiresExactIpv6PacketLength() {
+        val ipv4 = ipv4Packet()
+        val withTrailingByte = ipv4 + byteArrayOf(0)
+        assertFalse(IpPacketValidator.isValidIpv4Header(withTrailingByte, ipv4.size))
+        assertTrue(IpPacketValidator.isExactIpv6PacketLength(ByteArray(48), 8))
+        assertFalse(IpPacketValidator.isExactIpv6PacketLength(ByteArray(49), 8))
+        assertFalse(IpPacketValidator.isExactIpv6PacketLength(ByteArray(48), -1))
+    }
+
     @Test fun rejectsIpv4FragmentsAndReservedFlag() {
         for (fragmentField in listOf(0x2000, 0x0001, 0x8000)) {
             val packet = ipv4Packet()
