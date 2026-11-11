@@ -24,6 +24,7 @@ object WordNormalizer {
         return canonical
             .lowercase(Locale.ROOT)
             .replace(ZERO_WIDTH_NON_JOINER.toString(), " ")
+            .replace(INVISIBLE_FORMATTING, "")
             .replace(WHITESPACE, " ")
             .trim()
     }
@@ -37,5 +38,8 @@ object WordNormalizer {
     private const val ZERO_WIDTH_NON_JOINER = '\u200C'
 
     private val DIACRITICS = Regex("[\\u064B-\\u065F\\u0670]")
-    private val WHITESPACE = Regex("\\s+")
+    // Ignore invisible formatting marks that can otherwise split a filtered word.
+    private val INVISIBLE_FORMATTING = Regex("[\\u200B\\u200D\\u2060\\uFEFF]")
+    // Unicode separator categories include NBSP, em space and other non-ASCII spaces.
+    private val WHITESPACE = Regex("[\\\p{Z}\\s]+")
 }
