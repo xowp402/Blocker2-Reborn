@@ -105,17 +105,25 @@ class AccessibilityMonitorService : AccessibilityService() {
         val blockDao = app.database.activeAppBlockDao()
         blockDao.deleteExpired(now)
 
-        if (blockDao.findActive(packageName, now) != null) {
-            withContext(Dispatchers.Main) {
-                if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
-                    Log.w(TAG, "Could not return home while enforcing timed block")
+        // Keep enforcing an active block, but still inspect this snapshot. If the
+        // original blocking rule is genuinely detected again, its duration is
+        // restarted from this detection time below.
+        val activeBlock = blockDao.findActive(packageName, now)
+
+        val monitored = app.database.monitoredAppDao().observeMonitored().first()
+            .firstOrNull { it.packageName == packageName }
+        if (monitored == null) {
+            // Removing an app from the monitoring list must not bypass a block
+            // that was already created for it.
+            if (activeBlock != null) {
+                withContext(Dispatchers.Main) {
+                    if (!performGlobalAction(GLOBAL_ACTION_HOME)) {
+                        Log.w(TAG, "Could not return home while enforcing timed block")
+                    }
                 }
             }
             return
         }
-
-        val monitored = app.database.monitoredAppDao().observeMonitored().first()
-            .firstOrNull { it.packageName == packageName } ?: return
 
         val commitment = app.database.commitmentSessionDao().getSession()
         if (commitment != null && commitment.expiresAt > now) {
@@ -152,7 +160,9 @@ class AccessibilityMonitorService : AccessibilityService() {
             app.database.commitmentSessionDao().endSession()
         }
         val rules = app.wordRules.observeEnabled().first()
-        var shouldExit = false
+        // An existing timed block remains enforced even if this snapshot no longer
+        // contains the triggering text. A fresh match below can refresh its expiry.
+        var shouldExit = activeBlock != null
         var timedBlockCreated = false
 
         for (rule in rules) {
