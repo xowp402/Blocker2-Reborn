@@ -52,4 +52,6 @@ Use the same keystore for every future update of the app. Losing it prevents sig
 
 ## Data and privacy
 
+Android's automatic cloud/device backup of app-private data is disabled. Use Blocker2's explicit backup and restore screen to export a local backup file to a location you choose.
+
 Rules and activity data are stored locally using Room. The app does not require an account. Network access is used only by the DNS filtering service to contact its configured upstream DNS resolvers.
