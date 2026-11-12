@@ -141,7 +141,8 @@ private enum class MainSection(val title: String, val subtitle: String) {
     APPS("برنامه‌ها", "انتخاب برنامه‌های تحت نظارت"),
     BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده"),
     ACTIVITY("گزارش‌ها", "تاریخچهٔ شناسایی‌ها و واکنش‌ها"),
-    COMMITMENT("تعهد", "حالت تعهد شخصی و خروج اضطراری")
+    COMMITMENT("تعهد", "حالت تعهد شخصی و خروج اضطراری"),
+    BACKUP("پشتیبان", "ذخیره و بازیابی اطلاعات")
 }
 
 @androidx.compose.runtime.Composable
@@ -281,7 +282,8 @@ private fun Blocker2App(
                     MainSection.COMMITMENT -> CommitmentScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.commitmentSessionDao()
-                    )
+                    ),
+                    MainSection.BACKUP -> BackupScreen(database = appContext.database)
                 }
             }
 
