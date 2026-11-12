@@ -272,13 +272,15 @@ private fun Blocker2App(
                     )
                     MainSection.TELEGRAM -> TelegramRulesScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.telegramFilterRuleDao()
+                            .database.telegramFilterRuleDao(),
+                        language = language
                     )
                     MainSection.SITES -> SiteRulesScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.siteRuleDao(),
                         onStartVpn = onStartVpn,
-                        onStopVpn = onStopVpn
+                        onStopVpn = onStopVpn,
+                        language = language
                     )
                     MainSection.APPS -> {
                         if (commitmentActive) {
@@ -301,7 +303,7 @@ private fun Blocker2App(
                                 }
                             }
                         } else {
-                            MonitoredAppsScreen(dao = appContext.database.monitoredAppDao())
+                            MonitoredAppsScreen(dao = appContext.database.monitoredAppDao(), language = language)
                         }
                     }
                     MainSection.BLOCKS -> ActiveBlocksScreen(
@@ -315,9 +317,10 @@ private fun Blocker2App(
                     )
                     MainSection.COMMITMENT -> CommitmentScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.commitmentSessionDao()
+                            .database.commitmentSessionDao(),
+                        language = language
                     )
-                    MainSection.BACKUP -> BackupScreen(database = appContext.database)
+                    MainSection.BACKUP -> BackupScreen(database = appContext.database, language = language)
                     MainSection.SETTINGS -> com.blocker2.app.ui.SettingsScreen(
                         language = language,
                         themeMode = themeMode,

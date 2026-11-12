@@ -41,7 +41,8 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> Unit) {
+fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> Unit, language: String) {
+    val english = language == "en"
     val blocked by dao.observeBlockedSites().collectAsState(initial = emptyList())
     val allowed by dao.observeAllowedSites().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
@@ -58,8 +59,8 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onStartVpn, modifier = Modifier.weight(1f)) { Text("فعال‌سازی فیلتر DNS") }
-            OutlinedButton(onClick = onStopVpn, modifier = Modifier.weight(1f)) { Text("توقف فیلتر") }
+            Button(onClick = onStartVpn, modifier = Modifier.weight(1f)) { Text(if (english) "Start DNS filter" else "فعال‌سازی فیلتر DNS") }
+            OutlinedButton(onClick = onStopVpn, modifier = Modifier.weight(1f)) { Text(if (english) "Stop filter" else "توقف فیلتر") }
         }
         Text(
             "درخواست‌های DNS غیرمسدود ابتدا به 1.1.1.1 و در صورت خطا به 8.8.8.8 فرستاده می‌شوند؛ نام دامنه‌ها برای حل DNS به این سرویس‌ها ارسال می‌شود، اما ترافیک عادی وب از تونل عبور نمی‌کند.",
@@ -67,12 +68,12 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("مسدودشده‌ها (${blocked.size})") })
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("مجازها (${allowed.size})") })
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text(if (english) "Blocked (${blocked.size})" else "مسدودشده‌ها (${blocked.size})") })
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text(if (english) "Allowed (${allowed.size})" else "مجازها (${allowed.size})") })
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(onClick = { if (selectedTab == 0) addBlocked = true else addAllowed = true }) {
-                Text(if (selectedTab == 0) "افزودن مورد مسدود" else "افزودن سایت مجاز")
+                Text(if (selectedTab == 0) "Add blocked site" else "افزودن سایت مجاز")
             }
         }
 
@@ -87,7 +88,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text(rule.pattern, style = MaterialTheme.typography.titleSmall)
-                                        Text(siteTypeLabel(rule.ruleType), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(siteTypeLabel(rule.ruleType, english), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Switch(
                                         checked = rule.enabled,
@@ -97,7 +98,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
                                     )
                                 }
                                 Row {
-                                    TextButton(onClick = { deletingBlocked = rule }) { Text("حذف") }
+                                    TextButton(onClick = { deletingBlocked = rule }) { Text(if (english) "Delete" else "حذف") }
                                 }
                             }
                         }
@@ -130,6 +131,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 
     if (addBlocked) {
         SiteRuleDialog(
+            language = language,
             onDismiss = { addBlocked = false },
             onSave = { type, pattern ->
                 val normalized = normalizeSite(pattern)
@@ -148,6 +150,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
     }
     if (addAllowed) {
         AllowedSiteDialog(
+            language = language,
             onDismiss = { addAllowed = false },
             onSave = { pattern, subdomains ->
                 val normalized = normalizeSite(pattern)
@@ -169,7 +172,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
     deletingBlocked?.let { item ->
         AlertDialog(
             onDismissRequest = { deletingBlocked = null },
-            title = { Text("حذف قانون؟") },
+            title = { Text(if (english) "Delete rule?" else "حذف قانون؟") },
             text = { Text("«${item.pattern}» از فهرست مسدودشده‌ها حذف می‌شود.") },
             confirmButton = {
                 Button(onClick = {
@@ -177,13 +180,13 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
                     deletingBlocked = null
                 }) { Text("حذف") }
             },
-            dismissButton = { TextButton(onClick = { deletingBlocked = null }) { Text("انصراف") } }
+            dismissButton = { TextButton(onClick = { deletingBlocked = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
     }
     deletingAllowed?.let { item ->
         AlertDialog(
             onDismissRequest = { deletingAllowed = null },
-            title = { Text("حذف سایت مجاز؟") },
+            title = { Text(if (english) "Delete allowed site?" else "حذف سایت مجاز؟") },
             text = { Text("«${item.pattern}» از فهرست مجازها حذف می‌شود.") },
             confirmButton = {
                 Button(onClick = {
@@ -197,27 +200,28 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 }
 
 @Composable
-private fun SiteRuleDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+private fun SiteRuleDialog(language: String, onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+    val english = language == "en"
     var type by remember { mutableStateOf("DOMAIN_AND_SUBDOMAINS") }
     var pattern by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("افزودن قانون مسدودسازی") },
+        title = { Text(if (english) "Add blocking rule" else "افزودن قانون مسدودسازی") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text(siteTypeLabel(type)) }
+                OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text(siteTypeLabel(type, english)) }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     listOf("DOMAIN", "DOMAIN_AND_SUBDOMAINS").forEach { item ->
-                        DropdownMenuItem(text = { Text(siteTypeLabel(item)) }, onClick = { type = item; expanded = false })
+                        DropdownMenuItem(text = { Text(siteTypeLabel(item, english)) }, onClick = { type = item; expanded = false })
                     }
                 }
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it; error = null },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("نام دامنه") },
+                    label = { Text(if (english) "Domain name" else "نام دامنه") },
                     placeholder = { Text("example.com") },
                     supportingText = { Text("فقط نام دامنه پشتیبانی می‌شود؛ مسیر URL و IP مستقیم قابل فیلتر نیستند.") }
                 )
@@ -232,32 +236,33 @@ private fun SiteRuleDialog(onDismiss: () -> Unit, onSave: (String, String) -> Un
                 } else {
                     onSave(type, normalized)
                 }
-            }) { Text("ذخیره") }
+            }) { Text(if (english) "Save" else "ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(if (english) "Cancel" else "انصراف") } }
     )
 }
 
 @Composable
-private fun AllowedSiteDialog(onDismiss: () -> Unit, onSave: (String, Boolean) -> Unit) {
+private fun AllowedSiteDialog(language: String, onDismiss: () -> Unit, onSave: (String, Boolean) -> Unit) {
+    val english = language == "en"
     var pattern by remember { mutableStateOf("") }
     var subdomains by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("افزودن سایت مجاز") },
+        title = { Text(if (english) "Add allowed site" else "افزودن سایت مجاز") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it; error = null },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("دامنه یا میزبان") },
+                    label = { Text(if (english) "Domain or host" else "دامنه یا میزبان") },
                     placeholder = { Text("example.com") }
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = subdomains, onCheckedChange = { subdomains = it })
-                    Text("شامل تمام زیر‌دامنه‌ها")
+                    Text(if (english) "Include all subdomains" else "شامل تمام زیر‌دامنه‌ها")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -291,10 +296,10 @@ private fun normalizeSite(value: String): String {
     return SiteRuleMatcher.normalizeHost(candidate)
 }
 
-private fun siteTypeLabel(value: String) = when (value) {
-    "DOMAIN" -> "فقط دامنه"
-    "DOMAIN_AND_SUBDOMAINS" -> "دامنه و زیر‌دامنه‌ها"
-    "URL_PREFIX" -> "پشتیبانی نمی‌شود: مسیر URL"
-    "IP" -> "پشتیبانی نمی‌شود: IP مستقیم"
+private fun siteTypeLabel(value: String, english: Boolean = false) = when (value) {
+    "DOMAIN" -> if (english) "Domain only" else "فقط دامنه"
+    "DOMAIN_AND_SUBDOMAINS" -> if (english) "Domain and subdomains" else "دامنه و زیر‌دامنه‌ها"
+    "URL_PREFIX" -> if (english) "Unsupported: URL path" else "پشتیبانی نمی‌شود: مسیر URL"
+    "IP" -> if (english) "Unsupported: direct IP" else "پشتیبانی نمی‌شود: IP مستقیم"
     else -> value
 }

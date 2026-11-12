@@ -50,11 +50,19 @@ private val appCategories = listOf(
     "OTHER" to "سایر"
 )
 
-private fun categoryLabel(value: String): String =
-    appCategories.firstOrNull { it.first == value }?.second ?: "سایر"
+private fun categoryLabel(value: String, english: Boolean): String = when (value) {
+    "SOCIAL" -> if (english) "Social" else "شبکه‌های اجتماعی"
+    "GAMES" -> if (english) "Games" else "بازی‌ها"
+    "BROWSERS" -> if (english) "Browsers" else "مرورگرها"
+    "VIDEO" -> if (english) "Video" else "ویدئو"
+    "ENTERTAINMENT" -> if (english) "Entertainment" else "سرگرمی"
+    "MESSAGING" -> if (english) "Messaging" else "پیام‌رسان‌ها"
+    else -> if (english) "Other" else "سایر"
+}
 
 @Composable
-fun MonitoredAppsScreen(dao: MonitoredAppDao) {
+fun MonitoredAppsScreen(dao: MonitoredAppDao, language: String) {
+    val english = language == "en"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val savedApps by dao.observeAll().collectAsState(initial = emptyList())
@@ -99,14 +107,14 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text("برنامه‌های تحت نظارت", fontWeight = FontWeight.Bold)
+                Text(if (english) "Monitored apps" else "برنامه‌های تحت نظارت", fontWeight = FontWeight.Bold)
                 Text(
-                    "$monitoredCount برنامه از ${installedApps.size} برنامهٔ قابل‌اجرا انتخاب شده‌اند.",
+                    if (english) "$monitoredCount of ${installedApps.size} launchable apps are selected." else "$monitoredCount برنامه از ${installedApps.size} برنامهٔ قابل‌اجرا انتخاب شده‌اند.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "فقط برنامه‌هایی که اینجا روشن می‌کنی در بررسی واژه‌ها هدف قرار می‌گیرند. خود Blocker2 همیشه مستثناست.",
+                    if (english) "Only apps enabled here are checked for word rules. Blocker2 is always excluded." else "فقط برنامه‌هایی که اینجا روشن می‌کنی در بررسی واژه‌ها هدف قرار می‌گیرند. خود Blocker2 همیشه مستثناست.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -117,14 +125,14 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
             value = search,
             onValueChange = { search = it },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("جست‌وجوی نام یا شناسهٔ برنامه") },
+            label = { Text(if (english) "Search app name or package" else "جست‌وجوی نام یا شناسهٔ برنامه") },
             singleLine = true
         )
 
         if (filteredApps.isEmpty()) {
             Text(
-                if (installedApps.isEmpty()) "برنامهٔ قابل‌اجرایی پیدا نشد."
-                else "نتیجه‌ای برای جست‌وجوی تو پیدا نشد.",
+                if (installedApps.isEmpty()) if (english) "No launchable apps found." else "برنامهٔ قابل‌اجرایی پیدا نشد."
+                else if (english) "No search results." else "نتیجه‌ای برای جست‌وجوی تو پیدا نشد.",
                 modifier = Modifier.padding(12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -154,12 +162,12 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    "تعداد تشخیص‌ها: ${saved?.detectionCount ?: 0L}",
+                                    if (english) "Detections: ${saved?.detectionCount ?: 0L}" else "تعداد تشخیص‌ها: ${saved?.detectionCount ?: 0L}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 TextButton(onClick = { categoryMenuExpanded = true }) {
-                                    Text("گروه: ${categoryLabel(category)}")
+                                    Text(if (english) "Category: ${categoryLabel(category, true)}" else "گروه: ${categoryLabel(category, false)}")
                                 }
                                 DropdownMenu(
                                     expanded = categoryMenuExpanded,
@@ -167,7 +175,7 @@ fun MonitoredAppsScreen(dao: MonitoredAppDao) {
                                 ) {
                                     appCategories.forEach { (key, label) ->
                                         DropdownMenuItem(
-                                            text = { Text(label) },
+                                            text = { Text(if (english) categoryLabel(key, true) else label) },
                                             onClick = {
                                                 categoryMenuExpanded = false
                                                 scope.launch {

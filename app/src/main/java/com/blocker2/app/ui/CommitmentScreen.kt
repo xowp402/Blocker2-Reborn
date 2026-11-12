@@ -46,7 +46,8 @@ private val commitmentDurations = listOf(
 )
 
 @Composable
-fun CommitmentScreen(dao: CommitmentSessionDao) {
+fun CommitmentScreen(dao: CommitmentSessionDao, language: String) {
+    val english = language == "en"
     val scope = rememberCoroutineScope()
     val session by dao.observeSession().collectAsState(initial = null)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -69,9 +70,9 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("حالت تعهد شخصی", style = MaterialTheme.typography.headlineSmall)
+        Text(if (english) "Personal commitment" else "حالت تعهد شخصی", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "در طول تعهد، برنامه‌هایی که در بخش «برنامه‌ها» برای نظارت فعال کرده‌ای، محدود می‌شوند. Blocker2 برای مدیریت جلسه از این محدودیت مستثناست.",
+            if (english) "During commitment, apps enabled for monitoring are restricted. Blocker2 is excluded so you can manage the session." else "در طول تعهد، برنامه‌هایی که در بخش «برنامه‌ها» برای نظارت فعال کرده‌ای، محدود می‌شوند. Blocker2 برای مدیریت جلسه از این محدودیت مستثناست.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -87,18 +88,18 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                     modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("تعهد فعال است", style = MaterialTheme.typography.titleLarge)
+                    Text(if (english) "Commitment is active" else "تعهد فعال است", style = MaterialTheme.typography.titleLarge)
                     Text(
                         "%02d:%02d:%02d".format(hours, minutes, seconds),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        "پایان: ${java.text.DateFormat.getDateTimeInstance().format(activeSession.expiresAt)}",
+                        if (english) "Ends: ${java.text.DateFormat.getDateTimeInstance().format(activeSession.expiresAt)}" else "پایان: ${java.text.DateFormat.getDateTimeInstance().format(activeSession.expiresAt)}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        "برای پایان زودهنگام باید دو مرحله تأیید خروج اضطراری را انجام بدهی.",
+                        if (english) "Ending early requires the two-step emergency exit confirmation." else "برای پایان زودهنگام باید دو مرحله تأیید خروج اضطراری را انجام بدهی.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -106,12 +107,12 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                         acknowledgedEmergency = false
                         showEmergencyWarning = true
                     }) {
-                        Text("درخواست خروج اضطراری")
+                        Text(if (english) "Request emergency exit" else "درخواست خروج اضطراری")
                     }
                 }
             }
         } else {
-            Text("مدت تعهد را انتخاب کن", style = MaterialTheme.typography.titleMedium)
+            Text(if (english) "Choose commitment duration" else "مدت تعهد را انتخاب کن", style = MaterialTheme.typography.titleMedium)
             commitmentDurations.forEach { duration ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -121,19 +122,19 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                         selected = selectedDuration == duration.millis,
                         onClick = { selectedDuration = duration.millis }
                     )
-                    Text(duration.label)
+                    Text(if (english) when (duration.millis) { 3_600_000L -> "1 hour"; 10_800_000L -> "3 hours"; 21_600_000L -> "6 hours"; 43_200_000L -> "12 hours"; else -> "24 hours" } else duration.label)
                 }
             }
             Button(
                 onClick = { showStartConfirmation = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("شروع تعهد")
+                Text(if (english) "Start commitment" else "شروع تعهد")
             }
         }
 
         Text(
-            "محدودیت مهم: اندروید اجازه نمی‌دهد یک برنامه عادی جلوی Force Stop، حذف برنامه یا تغییر مجوز Accessibility از تنظیمات سیستم را به‌طور قطعی بگیرد. برای اجرای محدودیت‌ها، سرویس دسترس‌پذیری باید فعال بماند.",
+            if (english) "Important limitation: Android does not let a regular app fully prevent force-stop, uninstalling, or changing Accessibility permissions in system settings. Accessibility must remain enabled for enforcement." else "محدودیت مهم: اندروید اجازه نمی‌دهد یک برنامه عادی جلوی Force Stop، حذف برنامه یا تغییر مجوز Accessibility از تنظیمات سیستم را به‌طور قطعی بگیرد. برای اجرای محدودیت‌ها، سرویس دسترس‌پذیری باید فعال بماند.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -142,9 +143,9 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
     if (showStartConfirmation) {
         AlertDialog(
             onDismissRequest = { showStartConfirmation = false },
-            title = { Text("شروع حالت تعهد؟") },
+            title = { Text(if (english) "Start commitment?" else "شروع حالت تعهد؟") },
             text = {
-                Text("برای مدت انتخاب‌شده، برنامه‌های تحت نظارت محدود می‌شوند. پایان عادی پیش از موعد در دسترس نیست؛ فقط خروج اضطراری چندمرحله‌ای وجود دارد.")
+                Text(if (english) "Monitored apps will be restricted for the selected duration. There is no normal early stop; only the multi-step emergency exit is available." else "برای مدت انتخاب‌شده، برنامه‌های تحت نظارت محدود می‌شوند. پایان عادی پیش از موعد در دسترس نیست؛ فقط خروج اضطراری چندمرحله‌ای وجود دارد.")
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -158,10 +159,10 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                         )
                     }
                     showStartConfirmation = false
-                }) { Text("تأیید و شروع") }
+                }) { Text(if (english) "Confirm and start" else "تأیید و شروع") }
             },
             dismissButton = {
-                TextButton(onClick = { showStartConfirmation = false }) { Text("انصراف") }
+                TextButton(onClick = { showStartConfirmation = false }) { Text(if (english) "Cancel" else "انصراف") }
             }
         )
     }
@@ -169,16 +170,16 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
     if (showEmergencyWarning) {
         AlertDialog(
             onDismissRequest = { showEmergencyWarning = false },
-            title = { Text("مرحله اول خروج اضطراری") },
+            title = { Text(if (english) "Emergency exit — step 1" else "مرحله اول خروج اضطراری") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("خروج اضطراری تعهد فعلی را فوراً پایان می‌دهد. فقط در صورت ضرورت ادامه بده.")
+                    Text(if (english) "Emergency exit immediately ends the current commitment. Continue only if necessary." else "خروج اضطراری تعهد فعلی را فوراً پایان می‌دهد. فقط در صورت ضرورت ادامه بده.")
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
                             checked = acknowledgedEmergency,
                             onCheckedChange = { acknowledgedEmergency = it }
                         )
-                        Text("پیامد پایان زودهنگام تعهد را می‌پذیرم.")
+                        Text(if (english) "I understand the consequences of ending early." else "پیامد پایان زودهنگام تعهد را می‌پذیرم.")
                     }
                 }
             },
@@ -189,10 +190,10 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
                         showEmergencyWarning = false
                         showEmergencyFinal = true
                     }
-                ) { Text("ادامه به مرحله دوم") }
+                ) { Text(if (english) "Continue to step 2" else "ادامه به مرحله دوم") }
             },
             dismissButton = {
-                TextButton(onClick = { showEmergencyWarning = false }) { Text("بازگشت") }
+                TextButton(onClick = { showEmergencyWarning = false }) { Text(if (english) "Back" else "بازگشت") }
             }
         )
     }
@@ -200,16 +201,16 @@ fun CommitmentScreen(dao: CommitmentSessionDao) {
     if (showEmergencyFinal) {
         AlertDialog(
             onDismissRequest = { showEmergencyFinal = false },
-            title = { Text("تأیید نهایی خروج") },
-            text = { Text("آیا مطمئنی که می‌خواهی جلسه تعهد را همین حالا پایان بدهی؟ این عمل قابل بازگردانی نیست.") },
+            title = { Text(if (english) "Final exit confirmation" else "تأیید نهایی خروج") },
+            text = { Text(if (english) "Are you sure you want to end this commitment now? This cannot be undone." else "آیا مطمئنی که می‌خواهی جلسه تعهد را همین حالا پایان بدهی؟ این عمل قابل بازگردانی نیست.") },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch { dao.endSession() }
                     showEmergencyFinal = false
-                }) { Text("بله، پایان تعهد") }
+                }) { Text(if (english) "Yes, end commitment" else "بله، پایان تعهد") }
             },
             dismissButton = {
-                TextButton(onClick = { showEmergencyFinal = false }) { Text("ادامه تعهد") }
+                TextButton(onClick = { showEmergencyFinal = false }) { Text(if (english) "Keep commitment" else "ادامه تعهد") }
             }
         )
     }

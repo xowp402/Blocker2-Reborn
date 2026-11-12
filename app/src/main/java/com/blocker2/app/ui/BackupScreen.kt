@@ -27,7 +27,8 @@ import com.blocker2.app.data.local.BlockerDatabase
 import kotlinx.coroutines.launch
 
 @Composable
-fun BackupScreen(database: BlockerDatabase) {
+fun BackupScreen(database: BlockerDatabase, language: String) {
+    val english = language == "en"
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var status by remember { mutableStateOf<String?>(null) }
@@ -41,9 +42,9 @@ fun BackupScreen(database: BlockerDatabase) {
             busy = true
             status = try {
                 BlockerBackupManager.exportTo(context.contentResolver, uri, database)
-                "فایل پشتیبان با موفقیت ذخیره شد."
+                if (english) "Backup saved successfully." else "فایل پشتیبان با موفقیت ذخیره شد."
             } catch (error: Exception) {
-                "ذخیرهٔ پشتیبان انجام نشد: ${error.message ?: "خطای ناشناخته"}"
+                if (english) "Backup failed: ${error.message ?: "Unknown error"}" else "ذخیرهٔ پشتیبان انجام نشد: ${error.message ?: "خطای ناشناخته"}"
             } finally { busy = false }
         }
     }
@@ -54,43 +55,43 @@ fun BackupScreen(database: BlockerDatabase) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("پشتیبان‌گیری از اطلاعات", style = MaterialTheme.typography.titleMedium)
+                Text(if (english) "Back up your data" else "پشتیبان‌گیری از اطلاعات", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "قوانین واژه و تلگرام، دامنه‌ها، برنامه‌های انتخاب‌شده، گزارش‌ها، مسدودی‌های فعال و جلسهٔ تعهد در یک فایل JSON ذخیره می‌شوند.",
+                    if (english) "Word and Telegram rules, domains, selected apps, activity logs, active blocks, and the commitment session are saved in a JSON file." else "قوانین واژه و تلگرام، دامنه‌ها، برنامه‌های انتخاب‌شده، گزارش‌ها، مسدودی‌های فعال و جلسهٔ تعهد در یک فایل JSON ذخیره می‌شوند.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Button(
                     onClick = { exportLauncher.launch("blocker2-backup.json") },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("ساخت فایل پشتیبان") }
+                ) { Text(if (english) "Create backup file" else "ساخت فایل پشتیبان") }
             }
         }
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("بازیابی اطلاعات", style = MaterialTheme.typography.titleMedium)
+                Text(if (english) "Restore data" else "بازیابی اطلاعات", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    "بازیابی، اطلاعات فعلی برنامه را با اطلاعات داخل فایل جایگزین می‌کند. فایل ابتدا بررسی می‌شود و جایگزینی همهٔ جدول‌ها در یک تراکنش انجام می‌شود.",
+                    if (english) "Restore replaces current app data with the contents of the file. The file is validated first, then all tables are replaced in one transaction." else "بازیابی، اطلاعات فعلی برنامه را با اطلاعات داخل فایل جایگزین می‌کند. فایل ابتدا بررسی می‌شود و جایگزینی همهٔ جدول‌ها در یک تراکنش انجام می‌شود.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 OutlinedButton(
                     onClick = { importLauncher.launch(arrayOf("application/json", "text/json")) },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("انتخاب فایل پشتیبان") }
+                ) { Text(if (english) "Choose backup file" else "انتخاب فایل پشتیبان") }
             }
         }
         status?.let {
-            Text(it, color = if (it.startsWith("فایل پشتیبان با موفقیت")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+            Text(it, color = if (it.startsWith(if (english) "Backup saved successfully." else "فایل پشتیبان با موفقیت")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
         }
-        if (busy) Text("در حال پردازش فایل…", style = MaterialTheme.typography.bodySmall)
+        if (busy) Text(if (english) "Processing file…" else "در حال پردازش فایل…", style = MaterialTheme.typography.bodySmall)
     }
 
     pendingRestoreUri?.let { uri ->
         AlertDialog(
             onDismissRequest = { pendingRestoreUri = null },
-            title = { Text("جایگزینی اطلاعات فعلی؟") },
-            text = { Text("همهٔ قوانین، برنامه‌های انتخاب‌شده، گزارش‌ها و وضعیت‌های ذخیره‌شده با نسخهٔ داخل فایل جایگزین می‌شوند. قبل از ادامه مطمئن شو از اطلاعات فعلی پشتیبان داری.") },
+            title = { Text(if (english) "Replace current data?" else "جایگزینی اطلاعات فعلی؟") },
+            text = { Text(if (english) "All rules, selected apps, logs, and saved states will be replaced by the backup. Make sure you have a backup of current data before continuing." else "همهٔ قوانین، برنامه‌های انتخاب‌شده، گزارش‌ها و وضعیت‌های ذخیره‌شده با نسخهٔ داخل فایل جایگزین می‌شوند. قبل از ادامه مطمئن شو از اطلاعات فعلی پشتیبان داری.") },
             confirmButton = {
                 TextButton(onClick = {
                     pendingRestoreUri = null
@@ -98,15 +99,15 @@ fun BackupScreen(database: BlockerDatabase) {
                         busy = true
                         status = try {
                             BlockerBackupManager.importFrom(context.contentResolver, uri, database)
-                            "بازیابی اطلاعات با موفقیت انجام شد."
+                            if (english) "Data restored successfully." else "بازیابی اطلاعات با موفقیت انجام شد."
                         } catch (error: Exception) {
-                            "بازیابی انجام نشد: ${error.message ?: "خطای ناشناخته"}"
+                            if (english) "Restore failed: ${error.message ?: "Unknown error"}" else "بازیابی انجام نشد: ${error.message ?: "خطای ناشناخته"}"
                         } finally { busy = false }
                     }
-                }) { Text("بازیابی و جایگزینی") }
+                }) { Text(if (english) "Restore and replace" else "بازیابی و جایگزینی") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRestoreUri = null }) { Text("انصراف") }
+                TextButton(onClick = { pendingRestoreUri = null }) { Text(if (english) "Cancel" else "انصراف") }
             }
         )
     }
