@@ -178,12 +178,21 @@ class AccessibilityMonitorService : AccessibilityService() {
             if (!RuleMatcher.matches(visibleText, rule.text, mode)) continue
 
             val matchKey = "$packageName:${rule.id}"
-            if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
+            val cooldownAccepted = matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)
             val reactionDecision = RuleReactionPolicy.evaluate(
                 reaction = rule.reaction,
                 durationMillis = rule.blockDurationMillis,
                 timedBlockAlreadyCreated = timedBlockCreated
             )
+            // A fresh match must refresh an already-active timed block even when
+            // analytics cooldown is still active. Cooldown suppresses duplicate
+            // records, not the actual restriction or its expiry refresh.
+            if (!DetectionProcessingPolicy.shouldProcess(
+                    cooldownAccepted = cooldownAccepted,
+                    activeTimedBlock = activeBlock != null,
+                    startsTimedBlock = reactionDecision.startsTimedBlock
+                )
+            ) continue
             if (reactionDecision.requiresExit) shouldExit = true
 
             val startsTimedBlock = reactionDecision.startsTimedBlock
@@ -211,30 +220,32 @@ class AccessibilityMonitorService : AccessibilityService() {
                 }
             }
 
-            // Analytics are best-effort: a logging failure must never prevent the
-            // already-decided enforcement action from reaching GLOBAL_ACTION_HOME.
-            if (rule.statisticsEnabled) {
-                runCatching { app.wordRules.recordDetection(rule.id) }
-                    .onFailure { error -> Log.w(TAG, "Could not update word-rule statistics", error) }
-            }
-            runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
-                .onFailure { error -> Log.w(TAG, "Could not update monitored-app statistics", error) }
-            runCatching {
-                app.database.activityLogDao().insert(
-                    ActivityLogEntity(
-                        occurredAt = now,
-                        sourcePackage = packageName,
-                        sourceLabel = monitored.appName,
-                        ruleType = "WORD",
-                        ruleId = rule.id,
-                        matchedValue = rule.text,
-                        reaction = rule.reaction,
-                        durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                        outcome = reactionDecision.outcome
+            // Analytics are best-effort and remain cooldown-limited. Enforcement
+            // above is deliberately independent so repeat matches can refresh expiry.
+            if (cooldownAccepted) {
+                if (rule.statisticsEnabled) {
+                    runCatching { app.wordRules.recordDetection(rule.id) }
+                        .onFailure { error -> Log.w(TAG, "Could not update word-rule statistics", error) }
+                }
+                runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
+                    .onFailure { error -> Log.w(TAG, "Could not update monitored-app statistics", error) }
+                runCatching {
+                    app.database.activityLogDao().insert(
+                        ActivityLogEntity(
+                            occurredAt = now,
+                            sourcePackage = packageName,
+                            sourceLabel = monitored.appName,
+                            ruleType = "WORD",
+                            ruleId = rule.id,
+                            matchedValue = rule.text,
+                            reaction = rule.reaction,
+                            durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
+                            outcome = reactionDecision.outcome
+                        )
                     )
-                )
-            }.onFailure { error -> Log.w(TAG, "Could not write word activity log", error) }
-            Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
+                }.onFailure { error -> Log.w(TAG, "Could not write word activity log", error) }
+                Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
+            }
         }
 
         if (isTelegramPackage(packageName)) {
@@ -243,12 +254,18 @@ class AccessibilityMonitorService : AccessibilityService() {
                 if (!TelegramRuleMatcher.matches(visibleText, rule.ruleType, rule.value)) continue
 
                 val matchKey = packageName + ":telegram:" + rule.id
-                if (!matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)) continue
+                val cooldownAccepted = matchCooldown.tryAcquire(matchKey, now, MATCH_COOLDOWN_MS)
                 val reactionDecision = RuleReactionPolicy.evaluate(
                     reaction = rule.reaction,
                     durationMillis = rule.blockDurationMillis,
                     timedBlockAlreadyCreated = timedBlockCreated
                 )
+                if (!DetectionProcessingPolicy.shouldProcess(
+                        cooldownAccepted = cooldownAccepted,
+                        activeTimedBlock = activeBlock != null,
+                        startsTimedBlock = reactionDecision.startsTimedBlock
+                    )
+                ) continue
                 if (reactionDecision.requiresExit) shouldExit = true
 
                 val startsTimedBlock = reactionDecision.startsTimedBlock
@@ -276,26 +293,28 @@ class AccessibilityMonitorService : AccessibilityService() {
                     }
                 }
 
-                runCatching { app.telegramRules.recordDetection(rule.id) }
-                    .onFailure { error -> Log.w(TAG, "Could not update Telegram-rule statistics", error) }
-                runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
-                    .onFailure { error -> Log.w(TAG, "Could not update Telegram app statistics", error) }
-                runCatching {
-                    app.database.activityLogDao().insert(
-                        ActivityLogEntity(
-                            occurredAt = now,
-                            sourcePackage = packageName,
-                            sourceLabel = monitored.appName,
-                            ruleType = "TELEGRAM",
-                            ruleId = rule.id,
-                            matchedValue = rule.value,
-                            reaction = rule.reaction,
-                            durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                            outcome = reactionDecision.outcome
+                if (cooldownAccepted) {
+                    runCatching { app.telegramRules.recordDetection(rule.id) }
+                        .onFailure { error -> Log.w(TAG, "Could not update Telegram-rule statistics", error) }
+                    runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
+                        .onFailure { error -> Log.w(TAG, "Could not update Telegram app statistics", error) }
+                    runCatching {
+                        app.database.activityLogDao().insert(
+                            ActivityLogEntity(
+                                occurredAt = now,
+                                sourcePackage = packageName,
+                                sourceLabel = monitored.appName,
+                                ruleType = "TELEGRAM",
+                                ruleId = rule.id,
+                                matchedValue = rule.value,
+                                reaction = rule.reaction,
+                                durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
+                                outcome = reactionDecision.outcome
+                            )
                         )
-                    )
-                }.onFailure { error -> Log.w(TAG, "Could not write Telegram activity log", error) }
-                Log.i(TAG, "Telegram rule detected: ruleId=" + rule.id + ", package=" + packageName)
+                    }.onFailure { error -> Log.w(TAG, "Could not write Telegram activity log", error) }
+                    Log.i(TAG, "Telegram rule detected: ruleId=" + rule.id + ", package=" + packageName)
+                }
             }
         }
 
