@@ -38,7 +38,8 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
+fun TelegramRulesScreen(dao: TelegramFilterRuleDao, language: String) {
+    val english = language == "en"
     val rules by dao.observeAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<TelegramFilterRuleEntity?>(null) }
@@ -52,10 +53,10 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("فیلتر اختصاصی تلگرام", style = MaterialTheme.typography.titleMedium)
-                Text("${rules.count { it.enabled }} فعال از ${rules.size} قانون", style = MaterialTheme.typography.bodySmall)
+                Text(if (english) "Telegram filters" else "فیلتر اختصاصی تلگرام", style = MaterialTheme.typography.titleMedium)
+                Text(if (english) "${rules.count { it.enabled }} of ${rules.size} active" else "${rules.count { it.enabled }} فعال از ${rules.size} قانون", style = MaterialTheme.typography.bodySmall)
             }
-            Button(onClick = { creating = true }) { Text("افزودن") }
+            Button(onClick = { creating = true }) { Text(if (english) "Add" else "افزودن") }
         }
         Text(
             "این فیلتر فقط هنگام پایش برنامه‌های تلگرام اجرا می‌شود. تشخیص به متن قابل مشاهده برای سرویس دسترس‌پذیری محدود است.",
@@ -65,8 +66,8 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
         if (rules.isEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("هنوز قانون تلگرامی ثبت نشده است")
-                    Text("می‌توانید واژه، عبارت، لینک کانال، شناسه یا نام کاربری اضافه کنید.", style = MaterialTheme.typography.bodySmall)
+                    Text(if (english) "No Telegram rules added yet" else "هنوز قانون تلگرامی ثبت نشده است")
+                    Text(if (english) "Add a word, phrase, channel link, channel ID, or username." else "می‌توانید واژه، عبارت، لینک کانال، شناسه یا نام کاربری اضافه کنید.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         } else {
@@ -77,17 +78,17 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(rule.value, style = MaterialTheme.typography.titleSmall)
-                                    Text("${telegramTypeLabel(rule.ruleType)} • ${telegramReactionLabel(rule.reaction)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${telegramTypeLabel(rule.ruleType, english)} • ${telegramReactionLabel(rule.reaction, english)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 Switch(
                                     checked = rule.enabled,
                                     onCheckedChange = { value -> scope.launch { dao.setEnabled(rule.id, value, System.currentTimeMillis()) } }
                                 )
                             }
-                            Text("تشخیص: ${rule.detectionCount} • مسدودی: ${rule.blockDurationMillis / 60_000L} دقیقه", style = MaterialTheme.typography.bodySmall)
+                            Text(if (english) "Detections: ${rule.detectionCount} • Block: ${rule.blockDurationMillis / 60_000L} min" else "تشخیص: ${rule.detectionCount} • مسدودی: ${rule.blockDurationMillis / 60_000L} دقیقه", style = MaterialTheme.typography.bodySmall)
                             Row {
-                                TextButton(onClick = { editing = rule }) { Text("ویرایش") }
-                                TextButton(onClick = { deleting = rule }) { Text("حذف") }
+                                TextButton(onClick = { editing = rule }) { Text(if (english) "Edit" else "ویرایش") }
+                                TextButton(onClick = { deleting = rule }) { Text(if (english) "Delete" else "حذف") }
                             }
                         }
                     }
@@ -99,6 +100,7 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
     if (creating || editing != null) {
         TelegramRuleDialog(
             initial = editing,
+            language = language,
             onDismiss = { creating = false; editing = null },
             onSave = { rule ->
                 scope.launch { dao.upsert(rule) }
@@ -110,15 +112,15 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
     deleting?.let { rule ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text("حذف قانون تلگرام؟") },
-            text = { Text("«${rule.value}» حذف می‌شود.") },
+            title = { Text(if (english) "Delete Telegram rule?" else "حذف قانون تلگرام؟") },
+            text = { Text(if (english) "“${rule.value}” will be deleted." else "«${rule.value}» حذف می‌شود.") },
             confirmButton = {
                 Button(onClick = {
                     scope.launch { dao.deleteById(rule.id) }
                     deleting = null
                 }) { Text("حذف") }
             },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text("انصراف") } }
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
     }
 }
@@ -126,9 +128,11 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao) {
 @Composable
 private fun TelegramRuleDialog(
     initial: TelegramFilterRuleEntity?,
+    language: String,
     onDismiss: () -> Unit,
     onSave: (TelegramFilterRuleEntity) -> Unit
 ) {
+    val english = language == "en"
     var type by remember(initial) { mutableStateOf(initial?.ruleType ?: "WORD") }
     var value by remember(initial) { mutableStateOf(initial?.value.orEmpty()) }
     var reaction by remember(initial) { mutableStateOf(initial?.reaction ?: "WARN_AND_EXIT") }
@@ -140,12 +144,12 @@ private fun TelegramRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "قانون جدید تلگرام" else "ویرایش قانون تلگرام") },
+        title = { Text(if (english) { if (initial == null) "New Telegram rule" else "Edit Telegram rule" } else { if (initial == null) "قانون جدید تلگرام" else "ویرایش قانون تلگرام" }) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TelegramDropdown("نوع: ${telegramTypeLabel(type)}", typeExpanded, { typeExpanded = it }) {
+                TelegramDropdown(if (english) "Type: ${telegramTypeLabel(type, true)}" else "نوع: ${telegramTypeLabel(type)}", typeExpanded, { typeExpanded = it }) {
                     listOf("WORD", "PHRASE", "CHANNEL_URL", "CHANNEL_ID", "USERNAME").forEach { item ->
-                        DropdownMenuItem(text = { Text(telegramTypeLabel(item)) }, onClick = { type = item; typeExpanded = false })
+                        DropdownMenuItem(text = { Text(telegramTypeLabel(item, english)) }, onClick = { type = item; typeExpanded = false })
                     }
                 }
                 OutlinedTextField(
@@ -153,29 +157,29 @@ private fun TelegramRuleDialog(
                     onValueChange = { value = it; error = null },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(when (type) {
-                        "WORD" -> "واژه"
-                        "PHRASE" -> "عبارت"
-                        "CHANNEL_URL" -> "لینک کانال"
-                        "CHANNEL_ID" -> "شناسه کانال"
-                        else -> "نام کاربری (با یا بدون @)"
+                        "WORD" -> if (english) "Word" else "واژه"
+                        "PHRASE" -> if (english) "Phrase" else "عبارت"
+                        "CHANNEL_URL" -> if (english) "Channel link" else "لینک کانال"
+                        "CHANNEL_ID" -> if (english) "Channel ID" else "شناسه کانال"
+                        else -> if (english) "Username (with or without @)" else "نام کاربری (با یا بدون @)"
                     }) },
-                    supportingText = { Text("مقدار باید در متن قابل مشاهدهٔ تلگرام وجود داشته باشد.") }
+                    supportingText = { Text(if (english) "The value must appear in Telegram text visible to Accessibility." else "مقدار باید در متن قابل مشاهدهٔ تلگرام وجود داشته باشد.") }
                 )
-                TelegramDropdown("واکنش: ${telegramReactionLabel(reaction)}", reactionExpanded, { reactionExpanded = it }) {
+                TelegramDropdown(if (english) "Action: ${telegramReactionLabel(reaction, true)}" else "واکنش: ${telegramReactionLabel(reaction)}", reactionExpanded, { reactionExpanded = it }) {
                     listOf("WARN_AND_EXIT", "TEMPORARY_BLOCK", "EXIT_ONLY", "LOG_ONLY").forEach { item ->
-                        DropdownMenuItem(text = { Text(telegramReactionLabel(item)) }, onClick = { reaction = item; reactionExpanded = false })
+                        DropdownMenuItem(text = { Text(telegramReactionLabel(item, english)) }, onClick = { reaction = item; reactionExpanded = false })
                     }
                 }
                 OutlinedTextField(
                     value = duration,
                     onValueChange = { duration = it.filter(Char::isDigit) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("مدت مسدودی به دقیقه (۰ تا ۱۴۴۰)") },
+                    label = { Text(if (english) "Block duration in minutes (0–1440)" else "مدت مسدودی به دقیقه (۰ تا ۱۴۴۰)") },
                     singleLine = true
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = enabled, onCheckedChange = { enabled = it })
-                    Text("قانون فعال باشد")
+                    Text(if (english) "Enable rule" else "قانون فعال باشد")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -185,9 +189,9 @@ private fun TelegramRuleDialog(
                 val clean = value.trim()
                 val minutes = duration.toLongOrNull()
                 when {
-                    clean.isBlank() -> error = "مقدار قانون را وارد کنید."
-                    minutes == null || minutes > 1440L -> error = "مدت باید بین صفر تا ۱۴۴۰ دقیقه باشد."
-                    type == "CHANNEL_ID" && clean.length < 3 -> error = "شناسه کانال معتبر به نظر نمی‌رسد."
+                    clean.isBlank() -> error = if (english) "Enter a rule value." else "مقدار قانون را وارد کنید."
+                    minutes == null || minutes > 1440L -> error = if (english) "Duration must be between 0 and 1440 minutes." else "مدت باید بین صفر تا ۱۴۴۰ دقیقه باشد."
+                    type == "CHANNEL_ID" && clean.length < 3 -> error = if (english) "The channel ID looks invalid." else "شناسه کانال معتبر به نظر نمی‌رسد."
                     else -> {
                         val normalized = when (type) {
                             "WORD", "PHRASE" -> WordNormalizer.normalize(clean)
@@ -195,7 +199,7 @@ private fun TelegramRuleDialog(
                             else -> clean.lowercase(Locale.ROOT)
                         }
                         if (normalized.isBlank()) {
-                            error = "مقدار پس از نرمال‌سازی خالی است."
+                            error = if (english) "The value is empty after normalization." else "مقدار پس از نرمال‌سازی خالی است."
                         } else {
                             val now = System.currentTimeMillis()
                             onSave(TelegramFilterRuleEntity(
@@ -213,7 +217,7 @@ private fun TelegramRuleDialog(
                         }
                     }
                 }
-            }) { Text("ذخیره") }
+            }) { Text(if (english) "Save" else "ذخیره") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
     )
@@ -227,7 +231,7 @@ private fun TelegramDropdown(label: String, expanded: Boolean, onExpanded: (Bool
     }
 }
 
-private fun telegramTypeLabel(value: String) = when (value) {
+private fun telegramTypeLabel(value: String, english: Boolean = false) = when (value) {
     "WORD" -> "واژه"
     "PHRASE" -> "عبارت"
     "CHANNEL_URL" -> "لینک کانال"
@@ -236,10 +240,10 @@ private fun telegramTypeLabel(value: String) = when (value) {
     else -> value
 }
 
-private fun telegramReactionLabel(value: String) = when (value) {
-    "WARN_AND_EXIT" -> "هشدار و خروج"
-    "TEMPORARY_BLOCK" -> "مسدودی موقت"
-    "EXIT_ONLY" -> "خروج از تلگرام"
-    "LOG_ONLY" -> "فقط ثبت گزارش"
+private fun telegramReactionLabel(value: String, english: Boolean = false) = when (value) {
+    "WARN_AND_EXIT" -> if (english) "Warn and exit" else "هشدار و خروج"
+    "TEMPORARY_BLOCK" -> if (english) "Temporary block" else "مسدودی موقت"
+    "EXIT_ONLY" -> if (english) "Exit Telegram" else "خروج از تلگرام"
+    "LOG_ONLY" -> if (english) "Log only" else "فقط ثبت گزارش"
     else -> value
 }

@@ -223,7 +223,7 @@ private fun SiteRuleDialog(language: String, onDismiss: () -> Unit, onSave: (Str
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(if (english) "Domain name" else "نام دامنه") },
                     placeholder = { Text("example.com") },
-                    supportingText = { Text("فقط نام دامنه پشتیبانی می‌شود؛ مسیر URL و IP مستقیم قابل فیلتر نیستند.") }
+                    supportingText = { Text(if (english) "Only domain names are supported; URL paths and direct IPs cannot be filtered." else "فقط نام دامنه پشتیبانی می‌شود؛ مسیر URL و IP مستقیم قابل فیلتر نیستند.") }
                 )
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -232,7 +232,7 @@ private fun SiteRuleDialog(language: String, onDismiss: () -> Unit, onSave: (Str
             Button(onClick = {
                 val normalized = normalizeSite(pattern)
                 if (normalized.isBlank()) {
-                    error = "فقط نام دامنهٔ معتبر وارد کنید؛ مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند."
+                    error = if (english) "Enter a valid domain. URL paths and direct IPs are not supported by DNS filtering." else "فقط نام دامنهٔ معتبر وارد کنید؛ مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند."
                 } else {
                     onSave(type, normalized)
                 }
@@ -270,11 +270,11 @@ private fun AllowedSiteDialog(language: String, onDismiss: () -> Unit, onSave: (
         confirmButton = {
             Button(onClick = {
                 val clean = normalizeSite(pattern)
-                if (clean.isBlank()) error = "فقط یک نام دامنهٔ معتبر وارد کنید؛ URL مسیر و IP مستقیم پشتیبانی نمی‌شوند."
+                if (clean.isBlank()) error = if (english) "Enter a valid domain. URL paths and direct IPs are not supported." else "فقط یک نام دامنهٔ معتبر وارد کنید؛ URL مسیر و IP مستقیم پشتیبانی نمی‌شوند."
                 else onSave(clean, subdomains)
-            }) { Text("ذخیره") }
+            }) { Text(if (english) "Save" else "ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(if (english) "Cancel" else "انصراف") } }
     )
 }
 
