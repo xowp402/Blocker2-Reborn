@@ -183,29 +183,41 @@ class AccessibilityMonitorService : AccessibilityService() {
                     )
                 )
                 timedBlockCreated = true
-                BlockNotificationManager.showTimedBlock(
-                    context = this@AccessibilityMonitorService,
-                    packageName = packageName,
-                    expiresAt = expiresAt,
-                    currentTimeMillis = now
-                )
+                runCatching {
+                    BlockNotificationManager.showTimedBlock(
+                        context = this@AccessibilityMonitorService,
+                        packageName = packageName,
+                        expiresAt = expiresAt,
+                        currentTimeMillis = now
+                    )
+                }.onFailure { error ->
+                    Log.w(TAG, "Could not show timed-block notification; enforcement will continue", error)
+                }
             }
 
-            if (rule.statisticsEnabled) app.wordRules.recordDetection(rule.id)
-            app.database.monitoredAppDao().incrementDetectionCount(packageName, now)
-            app.database.activityLogDao().insert(
-                ActivityLogEntity(
-                    occurredAt = now,
-                    sourcePackage = packageName,
-                    sourceLabel = monitored.appName,
-                    ruleType = "WORD",
-                    ruleId = rule.id,
-                    matchedValue = rule.text,
-                    reaction = rule.reaction,
-                    durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                    outcome = reactionDecision.outcome
+            // Analytics are best-effort: a logging failure must never prevent the
+            // already-decided enforcement action from reaching GLOBAL_ACTION_HOME.
+            if (rule.statisticsEnabled) {
+                runCatching { app.wordRules.recordDetection(rule.id) }
+                    .onFailure { error -> Log.w(TAG, "Could not update word-rule statistics", error) }
+            }
+            runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
+                .onFailure { error -> Log.w(TAG, "Could not update monitored-app statistics", error) }
+            runCatching {
+                app.database.activityLogDao().insert(
+                    ActivityLogEntity(
+                        occurredAt = now,
+                        sourcePackage = packageName,
+                        sourceLabel = monitored.appName,
+                        ruleType = "WORD",
+                        ruleId = rule.id,
+                        matchedValue = rule.text,
+                        reaction = rule.reaction,
+                        durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
+                        outcome = reactionDecision.outcome
+                    )
                 )
-            )
+            }.onFailure { error -> Log.w(TAG, "Could not write word activity log", error) }
             Log.i(TAG, "Word rule detected: ruleId=${rule.id}, package=$packageName")
         }
 
@@ -236,29 +248,37 @@ class AccessibilityMonitorService : AccessibilityService() {
                         )
                     )
                     timedBlockCreated = true
-                    BlockNotificationManager.showTimedBlock(
-                        context = this@AccessibilityMonitorService,
-                        packageName = packageName,
-                        expiresAt = expiresAt,
-                        currentTimeMillis = now
-                    )
+                    runCatching {
+                        BlockNotificationManager.showTimedBlock(
+                            context = this@AccessibilityMonitorService,
+                            packageName = packageName,
+                            expiresAt = expiresAt,
+                            currentTimeMillis = now
+                        )
+                    }.onFailure { error ->
+                        Log.w(TAG, "Could not show timed-block notification; enforcement will continue", error)
+                    }
                 }
 
-                app.telegramRules.recordDetection(rule.id)
-                app.database.monitoredAppDao().incrementDetectionCount(packageName, now)
-                app.database.activityLogDao().insert(
-                    ActivityLogEntity(
-                        occurredAt = now,
-                        sourcePackage = packageName,
-                        sourceLabel = monitored.appName,
-                        ruleType = "TELEGRAM",
-                        ruleId = rule.id,
-                        matchedValue = rule.value,
-                        reaction = rule.reaction,
-                        durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
-                        outcome = reactionDecision.outcome
+                runCatching { app.telegramRules.recordDetection(rule.id) }
+                    .onFailure { error -> Log.w(TAG, "Could not update Telegram-rule statistics", error) }
+                runCatching { app.database.monitoredAppDao().incrementDetectionCount(packageName, now) }
+                    .onFailure { error -> Log.w(TAG, "Could not update Telegram app statistics", error) }
+                runCatching {
+                    app.database.activityLogDao().insert(
+                        ActivityLogEntity(
+                            occurredAt = now,
+                            sourcePackage = packageName,
+                            sourceLabel = monitored.appName,
+                            ruleType = "TELEGRAM",
+                            ruleId = rule.id,
+                            matchedValue = rule.value,
+                            reaction = rule.reaction,
+                            durationMillis = if (startsTimedBlock) rule.blockDurationMillis else 0L,
+                            outcome = reactionDecision.outcome
+                        )
                     )
-                )
+                }.onFailure { error -> Log.w(TAG, "Could not write Telegram activity log", error) }
                 Log.i(TAG, "Telegram rule detected: ruleId=" + rule.id + ", package=" + packageName)
             }
         }
