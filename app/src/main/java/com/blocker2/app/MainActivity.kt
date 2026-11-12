@@ -225,7 +225,7 @@ private fun Blocker2App(
                     )
                 }
                 Text(
-                    text = "نسخه ۱.۰.۰",
+                    text = if (language == "en") "Version 1.0.0" else "نسخه ۱.۰.۰",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )

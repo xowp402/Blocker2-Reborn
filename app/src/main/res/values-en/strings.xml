@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Blocker2</string>
+    <string name="app_tagline">Mindful control, better focus</string>
+    <string name="accessibility_service_label">Blocker2 word monitoring</string>
+    <string name="accessibility_service_description">With your permission, checks visible text in selected apps for filtered words. Full page text is not stored and password fields are ignored.</string>
+    <string name="dns_notification_title">Blocker2 local DNS filter is active</string>
+    <string name="dns_notification_text">Only domain DNS requests are inspected.</string>
+    <string name="dns_notification_channel">Site filtering</string>
+    <string name="stop">Stop</string>
+    <string name="block_notification_title">Blocker2 temporarily blocked an app</string>
+    <string name="block_notification_text">Access to this app is limited to help you stay focused.</string>
+    <string name="block_notification_big_text">To help you stay focused, access to this app is limited until the selected time ends. Remaining time when activated: about %1$d minutes.</string>
+</resources>

@@ -19,7 +19,7 @@ import com.blocker2.app.MainActivity
  */
 object BlockNotificationManager {
     private const val CHANNEL_ID = "active_app_blocks"
-    private const val CHANNEL_NAME = "مسدودسازی برنامه‌ها"
+    private const val CHANNEL_NAME = "Blocker2 active app blocks"
     private const val NOTIFICATION_ID_BASE = 20_000
 
     fun showTimedBlock(
@@ -56,12 +56,11 @@ object BlockNotificationManager {
         val minutes = TimedBlockTime.ceilMinutes(remainingMillis).coerceAtLeast(1L)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle("Blocker2؛ برنامه موقتاً مسدود شد")
-            .setContentText("برای حفظ تمرکز، دسترسی به این برنامه محدود شده است.")
+            .setContentTitle(context.getString(com.blocker2.app.R.string.block_notification_title))
+            .setContentText(context.getString(com.blocker2.app.R.string.block_notification_text))
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    "برای حفظ تمرکز، دسترسی به این برنامه تا پایان زمان تعیین‌شده محدود شده است. " +
-                        "زمان باقی‌مانده هنگام فعال‌سازی: حدود $minutes دقیقه."
+                    context.getString(com.blocker2.app.R.string.block_notification_big_text, minutes)
                 )
             )
             .setContentIntent(pendingIntent)

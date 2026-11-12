@@ -4,4 +4,11 @@
     <string name="app_tagline">کنترل آگاهانه، تمرکز بیشتر</string>
     <string name="accessibility_service_label">پایش واژه‌های Blocker2</string>
     <string name="accessibility_service_description">با اجازهٔ شما، متن قابل‌مشاهدهٔ برنامه‌های انتخاب‌شده را برای یافتن واژه‌های فیلترشده بررسی می‌کند. متن کامل صفحه ذخیره نمی‌شود و فیلدهای رمز عبور نادیده گرفته می‌شوند.</string>
+    <string name="dns_notification_title">فیلتر DNS محلی Blocker2 فعال است</string>
+    <string name="dns_notification_text">فقط درخواست‌های DNS دامنه‌ها بررسی می‌شوند.</string>
+    <string name="dns_notification_channel">فیلتر سایت‌ها</string>
+    <string name="stop">توقف</string>
+    <string name="block_notification_title">Blocker2؛ برنامه موقتاً مسدود شد</string>
+    <string name="block_notification_text">برای حفظ تمرکز، دسترسی به این برنامه محدود شده است.</string>
+    <string name="block_notification_big_text">برای حفظ تمرکز، دسترسی به این برنامه تا پایان زمان تعیین‌شده محدود شده است. زمان باقی‌مانده هنگام فعال‌سازی: حدود %1$d دقیقه.</string>
 </resources>

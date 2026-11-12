@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Blocker2.Starting" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@drawable/blocker2_splash</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/blocker2_splash_background</item>
+        <item name="android:navigationBarColor">@color/blocker2_splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/blocker2_splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/blocker2_launcher</item>
+        <item name="android:windowSplashScreenAnimationDuration">400</item>
+    </style>
+</resources>

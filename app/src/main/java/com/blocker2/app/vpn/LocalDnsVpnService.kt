@@ -243,11 +243,11 @@ class LocalDnsVpnService : VpnService() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_lock)
-            .setContentTitle("فیلتر DNS محلی Blocker2 فعال است")
-            .setContentText("فقط درخواست‌های DNS دامنه‌ها بررسی می‌شوند.")
+            .setContentTitle(getString(R.string.dns_notification_title))
+            .setContentText(getString(R.string.dns_notification_text))
             .setContentIntent(openApp)
             .setOngoing(true)
-            .addAction(android.R.drawable.ic_media_pause, "توقف", stopIntent)
+            .addAction(android.R.drawable.ic_media_pause, getString(R.string.stop), stopIntent)
             .build()
     }
 
@@ -255,7 +255,7 @@ class LocalDnsVpnService : VpnService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "فیلتر سایت‌ها", NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, getString(R.string.dns_notification_channel), NotificationManager.IMPORTANCE_LOW)
             )
         }
     }
