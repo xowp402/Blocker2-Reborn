@@ -54,7 +54,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
 
     Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            "این موتور نام دامنه را در DNS روی UDP و IPv4/IPv6 بررسی می‌کند. قانون IP مستقیم و مسیر URL اجرا نمی‌شوند؛ مسیر HTTPS و DNS رمزگذاری‌شده قابل مشاهده نیستند. DNS روی TCP و بسته‌های IPv6 دارای Extension Header نیز هنوز پشتیبانی نمی‌شوند؛ در این حالت فیلتر سایت برای جلوگیری از قطع اینترنت خاموش می‌شود.",
+            if (english) "This engine checks domain names in DNS over UDP and IPv4/IPv6. Direct-IP and URL-path rules are not enforced; HTTPS paths and encrypted DNS are not visible. DNS over TCP and IPv6 packets with extension headers are not yet supported. In these cases, site filtering is disabled to avoid interrupting internet access." else "این موتور نام دامنه را در DNS روی UDP و IPv4/IPv6 بررسی می‌کند. قانون IP مستقیم و مسیر URL اجرا نمی‌شوند؛ مسیر HTTPS و DNS رمزگذاری‌شده قابل مشاهده نیستند. DNS روی TCP و بسته‌های IPv6 دارای Extension Header نیز هنوز پشتیبانی نمی‌شوند؛ در این حالت فیلتر سایت برای جلوگیری از قطع اینترنت خاموش می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -63,7 +63,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
             OutlinedButton(onClick = onStopVpn, modifier = Modifier.weight(1f)) { Text(if (english) "Stop filter" else "توقف فیلتر") }
         }
         Text(
-            "درخواست‌های DNS غیرمسدود ابتدا به 1.1.1.1 و در صورت خطا به 8.8.8.8 فرستاده می‌شوند؛ نام دامنه‌ها برای حل DNS به این سرویس‌ها ارسال می‌شود، اما ترافیک عادی وب از تونل عبور نمی‌کند.",
+            if (english) "Allowed DNS requests are forwarded to 1.1.1.1 and, if it fails, to 8.8.8.8. Domain names are sent to these resolvers, but ordinary web traffic does not pass through the tunnel." else "درخواست‌های DNS غیرمسدود ابتدا به 1.1.1.1 و در صورت خطا به 8.8.8.8 فرستاده می‌شوند؛ نام دامنه‌ها برای حل DNS به این سرویس‌ها ارسال می‌شود، اما ترافیک عادی وب از تونل عبور نمی‌کند.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -73,13 +73,13 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(onClick = { if (selectedTab == 0) addBlocked = true else addAllowed = true }) {
-                Text(if (selectedTab == 0) "Add blocked site" else "افزودن سایت مجاز")
+                Text(if (english) { if (selectedTab == 0) "Add blocked site" else "Add allowed site" } else { if (selectedTab == 0) "افزودن سایت مسدود" else "افزودن سایت مجاز" })
             }
         }
 
         if (selectedTab == 0) {
             if (blocked.isEmpty()) {
-                SiteEmptyCard("فهرست مسدودشده‌ها خالی است", "دامنه یا دامنه به‌همراه زیر‌دامنه‌هایش را اضافه کنید. مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند.")
+                SiteEmptyCard(if (english) "No blocked sites" else "فهرست مسدودشده‌ها خالی است", if (english) "Add a domain, with or without its subdomains. URL paths and direct IP addresses are not supported by DNS filtering." else "دامنه یا دامنه به‌همراه زیر‌دامنه‌هایش را اضافه کنید. مسیر URL و IP مستقیم در فیلتر DNS پشتیبانی نمی‌شوند.")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(blocked, key = { it.id }) { rule ->
@@ -107,7 +107,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
             }
         } else {
             if (allowed.isEmpty()) {
-                SiteEmptyCard("فهرست مجازها خالی است", "سایت‌هایی را که نباید با قوانین مسدود شوند اضافه کنید.")
+                SiteEmptyCard(if (english) "No allowed sites" else "فهرست مجازها خالی است", if (english) "Add sites that should be exempt from blocking rules." else "سایت‌هایی را که نباید با قوانین مسدود شوند اضافه کنید.")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(allowed, key = { it.id }) { rule ->
@@ -118,9 +118,9 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
                             ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(rule.pattern, style = MaterialTheme.typography.titleSmall)
-                                    Text(if (rule.includeSubdomains) "همراه با زیر‌دامنه‌ها" else "فقط همین میزبان", style = MaterialTheme.typography.bodySmall)
+                                    Text(if (english) { if (rule.includeSubdomains) "Including subdomains" else "This host only" } else { if (rule.includeSubdomains) "همراه با زیر‌دامنه‌ها" else "فقط همین میزبان" }, style = MaterialTheme.typography.bodySmall)
                                 }
-                                TextButton(onClick = { deletingAllowed = rule }) { Text("حذف") }
+                                TextButton(onClick = { deletingAllowed = rule }) { Text(if (english) "Delete" else "حذف") }
                             }
                         }
                     }
@@ -173,12 +173,12 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
         AlertDialog(
             onDismissRequest = { deletingBlocked = null },
             title = { Text(if (english) "Delete rule?" else "حذف قانون؟") },
-            text = { Text("«${item.pattern}» از فهرست مسدودشده‌ها حذف می‌شود.") },
+            text = { Text(if (english) "“${item.pattern}” will be removed from the blocked list." else "«${item.pattern}» از فهرست مسدودشده‌ها حذف می‌شود.") },
             confirmButton = {
                 Button(onClick = {
                     scope.launch { dao.deleteBlockedSite(item.id) }
                     deletingBlocked = null
-                }) { Text("حذف") }
+                }) { Text(if (english) "Delete" else "حذف") }
             },
             dismissButton = { TextButton(onClick = { deletingBlocked = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
@@ -187,14 +187,14 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
         AlertDialog(
             onDismissRequest = { deletingAllowed = null },
             title = { Text(if (english) "Delete allowed site?" else "حذف سایت مجاز؟") },
-            text = { Text("«${item.pattern}» از فهرست مجازها حذف می‌شود.") },
+            text = { Text(if (english) "“${item.pattern}” will be removed from the allowed list." else "«${item.pattern}» از فهرست مجازها حذف می‌شود.") },
             confirmButton = {
                 Button(onClick = {
                     scope.launch { dao.deleteAllowedSite(item.id) }
                     deletingAllowed = null
                 }) { Text("حذف") }
             },
-            dismissButton = { TextButton(onClick = { deletingAllowed = null }) { Text("انصراف") } }
+            dismissButton = { TextButton(onClick = { deletingAllowed = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
     }
 }

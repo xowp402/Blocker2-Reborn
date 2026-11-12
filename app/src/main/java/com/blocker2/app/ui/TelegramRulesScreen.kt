@@ -118,7 +118,7 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao, language: String) {
                 Button(onClick = {
                     scope.launch { dao.deleteById(rule.id) }
                     deleting = null
-                }) { Text("حذف") }
+                }) { Text(if (english) "Delete" else "حذف") }
             },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
@@ -219,7 +219,7 @@ private fun TelegramRuleDialog(
                 }
             }) { Text(if (english) "Save" else "ذخیره") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(if (english) "Cancel" else "انصراف") } }
     )
 }
 
