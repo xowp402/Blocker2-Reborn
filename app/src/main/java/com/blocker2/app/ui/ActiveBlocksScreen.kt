@@ -1,6 +1,7 @@
 package com.blocker2.app.ui
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,7 +46,8 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
         while (true) {
             delay(1_000L)
             now = System.currentTimeMillis()
-            dao.deleteExpired(now)
+            runCatching { dao.deleteExpired(now) }
+                .onFailure { error -> Log.w(TAG, "Could not clean expired blocks from the active-block screen", error) }
         }
     }
 
@@ -161,3 +163,4 @@ private fun ActiveBlockCard(
 }
 
 private const val EXTENSION_MILLIS = 5 * 60 * 1_000L
+private const val TAG = "Blocker2.ActiveBlocks"
