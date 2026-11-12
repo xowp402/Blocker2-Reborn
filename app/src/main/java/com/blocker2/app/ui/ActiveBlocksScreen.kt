@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -41,6 +42,7 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var operationError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -59,6 +61,7 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
             modifier = Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            operationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Text(if (english) "No apps are currently blocked." else "هیچ برنامه‌ای در حال حاضر مسدود نیست.",  fontWeight = FontWeight.SemiBold)
             Text(
                 if (english) "When a word rule triggers a timed block, its status appears on this screen." else "وقتی یک قانون واژه باعث مسدودسازی زمان‌دار شود، وضعیت آن در این صفحه نمایش داده می‌شود.",
@@ -73,6 +76,9 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            operationError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        }
         items(blocks, key = { it.packageName }) { block ->
             ActiveBlockCard(
                 context = context,
@@ -81,29 +87,41 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
                 now = now,
                 onExtend = {
                     scope.launch {
-                        val now = System.currentTimeMillis()
-                        val updated = dao.extendActive(
-                            packageName = block.packageName,
-                            extensionMillis = EXTENSION_MILLIS,
-                            now = now
-                        )
-                        if (updated > 0) {
-                            val extendedBlock = dao.findActive(
+                        try {
+                            val now = System.currentTimeMillis()
+                            val updated = dao.extendActive(
                                 packageName = block.packageName,
-                                now = System.currentTimeMillis()
-                            ) ?: return@launch
-                            BlockNotificationManager.showTimedBlock(
-                                context = context,
-                                packageName = block.packageName,
-                                expiresAt = extendedBlock.expiresAt
+                                extensionMillis = EXTENSION_MILLIS,
+                                now = now
                             )
+                            if (updated > 0) {
+                                val extendedBlock = dao.findActive(
+                                    packageName = block.packageName,
+                                    now = System.currentTimeMillis()
+                                ) ?: return@launch
+                                BlockNotificationManager.showTimedBlock(
+                                    context = context,
+                                    packageName = block.packageName,
+                                    expiresAt = extendedBlock.expiresAt
+                                )
+                                operationError = null
+                            }
+                        } catch (error: Exception) {
+                            Log.e(TAG, "Could not extend timed block for ${block.packageName}", error)
+                            operationError = if (english) "Could not extend this block." else "تمدید این مسدودی انجام نشد."
                         }
                     }
                 },
                 onClear = {
                     scope.launch {
-                        dao.clearForPackage(block.packageName)
-                        BlockNotificationManager.cancelTimedBlock(context, block.packageName)
+                        try {
+                            dao.clearForPackage(block.packageName)
+                            BlockNotificationManager.cancelTimedBlock(context, block.packageName)
+                            operationError = null
+                        } catch (error: Exception) {
+                            Log.e(TAG, "Could not clear timed block for ${block.packageName}", error)
+                            operationError = if (english) "Could not clear this block." else "لغو این مسدودی انجام نشد."
+                        }
                     }
                 }
             )
