@@ -12,6 +12,7 @@ import java.io.IOException
 object BlockerBackupManager {
     private const val FORMAT = "blocker2-backup"
     private const val VERSION = 1
+    private const val MAX_BACKUP_BYTES = 50 * 1024 * 1024
     private val gson = Gson()
 
     private data class BackupEnvelope(
@@ -48,21 +49,38 @@ object BlockerBackupManager {
     }
 
     suspend fun importFrom(resolver: ContentResolver, uri: Uri, database: BlockerDatabase) {
-        val stream = resolver.openInputStream(uri)
-            ?: throw IOException("فایل انتخاب‌شده قابل خواندن نیست.")
-        val json = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-        if (json.isBlank() || json.length > 50_000_000) {
-            throw IOException("فایل پشتیبان خالی یا بیش از حد بزرگ است.")
+        val json = resolver.openInputStream(uri)?.use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(8 * 1024)
+            var totalBytes = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                if (count == 0) continue
+                if (totalBytes > MAX_BACKUP_BYTES - count) {
+                    throw IOException("فایل پشتیبان بیش از حد بزرگ است.")
+                }
+                output.write(buffer, 0, count)
+                totalBytes += count
+            }
+            String(output.toByteArray(), Charsets.UTF_8)
+        } ?: throw IOException("فایل انتخاب‌شده قابل خواندن نیست.")
+        if (json.isBlank()) {
+            throw IOException("فایل پشتیبان خالی است.")
         }
         val data = try {
             gson.fromJson(json, BackupEnvelope::class.java)
-        } catch (error: JsonParseException) {
+        } catch (error: RuntimeException) {
             throw IOException("ساختار فایل پشتیبان معتبر نیست.", error)
         } ?: throw IOException("فایل پشتیبان معتبر نیست.")
         if (data.format != FORMAT || data.version != VERSION) {
             throw IOException("قالب یا نسخهٔ این فایل پشتیبان پشتیبانی نمی‌شود.")
         }
-        validate(data)
+        try {
+            validate(data)
+        } catch (error: RuntimeException) {
+            throw IOException("اطلاعات فایل پشتیبان ناقص یا نامعتبر است.", error)
+        }
 
         database.withTransaction {
             database.wordRuleDao().clearForImport()
