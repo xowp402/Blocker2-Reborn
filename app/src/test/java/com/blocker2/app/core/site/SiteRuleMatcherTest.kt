@@ -52,4 +52,67 @@ class SiteRuleMatcherTest {
         val rule = SiteRuleEntity(ruleType = "URL_PREFIX", pattern = "example.com/private", normalizedPattern = "example.com/private")
         assertEquals(SiteRuleMatcher.Decision.PASS, SiteRuleMatcher.evaluate("example.com", listOf(rule), emptyList()))
     }
+
+    @Test fun disabledBlockedRuleDoesNotBlockHost() {
+        val disabled = SiteRuleEntity(
+            ruleType = "DOMAIN_AND_SUBDOMAINS",
+            pattern = "example.com",
+            normalizedPattern = "example.com",
+            enabled = false
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.PASS,
+            SiteRuleMatcher.evaluate("www.example.com", listOf(disabled), emptyList())
+        )
+    }
+
+    @Test fun ipRuleMatchesOnlyTheExactIpAddress() {
+        val rule = SiteRuleEntity(
+            ruleType = "IP",
+            pattern = "192.0.2.10",
+            normalizedPattern = "192.0.2.10"
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.BLOCK,
+            SiteRuleMatcher.evaluate("192.0.2.10", listOf(rule), emptyList())
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.PASS,
+            SiteRuleMatcher.evaluate("192.0.2.11", listOf(rule), emptyList())
+        )
+    }
+
+    @Test fun exactAllowEntryDoesNotAllowSubdomains() {
+        val allowed = AllowedSiteEntity(
+            pattern = "example.com",
+            normalizedPattern = "example.com",
+            includeSubdomains = false
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.ALLOW,
+            SiteRuleMatcher.evaluate("example.com", emptyList(), listOf(allowed))
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.PASS,
+            SiteRuleMatcher.evaluate("sub.example.com", emptyList(), listOf(allowed))
+        )
+    }
+
+    @Test fun blockedDomainTakesPrecedenceOverMatchingAllowEntry() {
+        val blocked = SiteRuleEntity(
+            ruleType = "DOMAIN",
+            pattern = "example.com",
+            normalizedPattern = "example.com"
+        )
+        val allowed = AllowedSiteEntity(
+            pattern = "example.com",
+            normalizedPattern = "example.com",
+            includeSubdomains = true
+        )
+        assertEquals(
+            SiteRuleMatcher.Decision.BLOCK,
+            SiteRuleMatcher.evaluate("example.com", listOf(blocked), listOf(allowed))
+        )
+    }
+
 }
