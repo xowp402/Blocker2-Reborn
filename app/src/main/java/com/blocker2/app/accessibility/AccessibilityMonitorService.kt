@@ -103,12 +103,18 @@ class AccessibilityMonitorService : AccessibilityService() {
         val app = application as Blocker2Application
         val now = System.currentTimeMillis()
         val blockDao = app.database.activeAppBlockDao()
-        blockDao.deleteExpired(now)
+        // Expired-row cleanup is housekeeping, not a prerequisite for enforcement.
+        // A transient write failure (for example, a full disk) must not abort this
+        // snapshot before commitment and word rules have a chance to run.
+        runCatching { blockDao.deleteExpired(now) }
+            .onFailure { error -> Log.w(TAG, "Could not clean expired timed blocks; continuing enforcement", error) }
 
         // Keep enforcing an active block, but still inspect this snapshot. If the
         // original blocking rule is genuinely detected again, its duration is
         // restarted from this detection time below.
-        val activeBlock = blockDao.findActive(packageName, now)
+        val activeBlock = runCatching { blockDao.findActive(packageName, now) }
+            .onFailure { error -> Log.e(TAG, "Could not read the active timed block", error) }
+            .getOrNull()
 
         val monitored = app.database.monitoredAppDao().observeMonitored().first()
             .firstOrNull { it.packageName == packageName }
