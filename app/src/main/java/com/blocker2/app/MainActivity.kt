@@ -267,7 +267,8 @@ private fun Blocker2App(
                         wordDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.wordRuleDao(),
                         appDao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.monitoredAppDao()
+                            .database.monitoredAppDao(),
+                        language = language
                     )
                     MainSection.TELEGRAM -> TelegramRulesScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
