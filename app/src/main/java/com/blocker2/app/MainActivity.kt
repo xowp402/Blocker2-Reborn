@@ -305,7 +305,8 @@ private fun Blocker2App(
                     }
                     MainSection.BLOCKS -> ActiveBlocksScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.activeAppBlockDao()
+                            .database.activeAppBlockDao(),
+                        language = language
                     )
                     MainSection.ACTIVITY -> ActivityLogScreen(
                         dao = appContext.database.activityLogDao(),

@@ -35,7 +35,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 @Composable
-fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
+fun ActiveBlocksScreen(dao: ActiveAppBlockDao, language: String) {
+    val english = language == "en";
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -56,9 +57,9 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
             modifier = Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("هیچ برنامه‌ای در حال حاضر مسدود نیست.", fontWeight = FontWeight.SemiBold)
+            Text(if (english) "No apps are currently blocked." else "هیچ برنامه‌ای در حال حاضر مسدود نیست.",  fontWeight = FontWeight.SemiBold)
             Text(
-                "وقتی یک قانون واژه باعث مسدودسازی زمان‌دار شود، وضعیت آن در این صفحه نمایش داده می‌شود.",
+                if (english) "When a word rule triggers a timed block, its status appears on this screen." else "وقتی یک قانون واژه باعث مسدودسازی زمان‌دار شود، وضعیت آن در این صفحه نمایش داده می‌شود.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -74,6 +75,7 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
             ActiveBlockCard(
                 context = context,
                 block = block,
+                language = language,
                 now = now,
                 onExtend = {
                     scope.launch {
@@ -111,10 +113,12 @@ fun ActiveBlocksScreen(dao: ActiveAppBlockDao) {
 private fun ActiveBlockCard(
     context: Context,
     block: ActiveAppBlockEntity,
+    language: String,
     now: Long,
     onExtend: () -> Unit,
     onClear: () -> Unit
 ) {
+    val english = language == "en"
     val appName = remember(block.packageName) {
         runCatching {
             val info = context.packageManager.getApplicationInfo(block.packageName, 0)
@@ -132,13 +136,13 @@ private fun ActiveBlockCard(
         ) {
             Text(appName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(
-                "زمان باقی‌مانده: %02d:%02d".format(minutes, seconds),
+                (if (english) "Time remaining: %02d:%02d" else "زمان باقی‌مانده: %02d:%02d").format(minutes, seconds),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary
             )
             if (block.reason.isNotBlank()) {
                 Text(
-                    "دلیل: ${block.reason}",
+                    if (english) "Reason: ${block.reason}" else "دلیل: ${block.reason}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -149,8 +153,8 @@ private fun ActiveBlockCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onExtend) { Text("تمدید ۵ دقیقه") }
-                OutlinedButton(onClick = onClear) { Text("لغو مسدودی") }
+                Button(onClick = onExtend) { Text(if (english) "Extend 5 min" else "تمدید ۵ دقیقه") }
+                OutlinedButton(onClick = onClear) { Text(if (english) "Clear block" else "لغو مسدودی") }
             }
         }
     }
