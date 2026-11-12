@@ -61,11 +61,7 @@ class SiteRuleRepository(
     suspend fun deleteAllowedSite(id: Long): Boolean = dao.deleteAllowedSite(id) > 0
 
     private fun normalizeSitePattern(value: String): String =
-        value.trim()
-            .lowercase(Locale.ROOT)
-            .removePrefix("https://")
-            .removePrefix("http://")
-            .removeSuffix("/")
+        com.blocker2.app.core.site.SiteRuleMatcher.normalizeInput(value)
 
     private companion object {
         val BLOCK_RULE_TYPES = setOf("DOMAIN", "DOMAIN_AND_SUBDOMAINS", "URL_PREFIX", "IP")

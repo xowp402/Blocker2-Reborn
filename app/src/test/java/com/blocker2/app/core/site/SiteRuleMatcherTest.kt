@@ -37,6 +37,14 @@ class SiteRuleMatcherTest {
         assertEquals("xn--mgbh0fb.xn--mgba3a4f16a", SiteRuleMatcher.normalizeHost("مثال.ایران."))
     }
 
+    @Test fun siteInputAcceptsHttpSchemesRegardlessOfCaseAndRejectsPaths() {
+        assertEquals("example.com", SiteRuleMatcher.normalizeInput("https://example.com"))
+        assertEquals("example.com", SiteRuleMatcher.normalizeInput("HTTPS://Example.COM"))
+        assertEquals("example.com", SiteRuleMatcher.normalizeInput("http://example.com"))
+        assertEquals("", SiteRuleMatcher.normalizeInput("https://example.com/private"))
+        assertEquals("", SiteRuleMatcher.normalizeInput("https://example.com:443"))
+    }
+
     @Test fun malformedHostInputIsRejected() {
         assertEquals("", SiteRuleMatcher.normalizeHost("https://example.com/path"))
         assertEquals("", SiteRuleMatcher.normalizeHost("example.com:443"))

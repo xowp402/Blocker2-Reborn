@@ -289,11 +289,9 @@ private fun SiteEmptyCard(title: String, description: String) {
 }
 
 private fun normalizeSite(value: String): String {
-    val candidate = value.trim()
-        .removePrefix("https://")
-        .removePrefix("http://")
-    if (candidate.matches(Regex("[0-9]+(\\.[0-9]+){3}"))) return ""
-    return SiteRuleMatcher.normalizeHost(candidate)
+    val normalized = SiteRuleMatcher.normalizeInput(value)
+    if (normalized.matches(Regex("[0-9]+(\\.[0-9]+){3}"))) return ""
+    return normalized
 }
 
 private fun siteTypeLabel(value: String, english: Boolean = false) = when (value) {

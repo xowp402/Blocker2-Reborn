@@ -33,6 +33,10 @@ object SiteRuleMatcher {
         return Decision.PASS
     }
 
+    /** Accepts a bare host or HTTP(S) origin; URL paths and ports remain unsupported. */
+    fun normalizeInput(value: String): String =
+        normalizeHost(value.trim().replace(Regex("(?i)^https?://"), ""))
+
     /** Converts Unicode domain labels to ASCII IDNA and rejects non-host input. */
     fun normalizeHost(value: String): String {
         val candidate = value.trim().removePrefix("[").removeSuffix("]")
