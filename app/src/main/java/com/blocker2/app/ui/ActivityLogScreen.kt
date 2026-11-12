@@ -1,5 +1,6 @@
 package com.blocker2.app.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,7 @@ fun ActivityLogScreen(dao: ActivityLogDao, language: String) {
     val todayCommitment by dao.observeCountSinceForType(todayStart, "COMMITMENT").collectAsState(initial = 0)
     var search by remember { mutableStateOf("") }
     var showClearConfirmation by remember { mutableStateOf(false) }
+    var operationError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val filteredEntries = remember(entries, search) {
         val query = search.trim().lowercase(Locale.ROOT)
@@ -70,6 +72,9 @@ fun ActivityLogScreen(dao: ActivityLogDao, language: String) {
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        operationError?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -166,7 +171,14 @@ fun ActivityLogScreen(dao: ActivityLogDao, language: String) {
             confirmButton = {
                 Button(onClick = {
                     showClearConfirmation = false
-                    scope.launch { dao.clearAll() }
+                    scope.launch {
+                        runCatching { dao.clearAll() }
+                            .onSuccess { operationError = null }
+                            .onFailure { error ->
+                                Log.e(TAG, "Could not clear activity log", error)
+                                operationError = if (english) "Could not clear activity history." else "پاک‌کردن گزارش‌ها انجام نشد."
+                            }
+                    }
                 }) { Text(if (english) "Clear" else "پاک‌کردن") }
             },
             dismissButton = {
@@ -249,6 +261,8 @@ private fun reactionLabel(value: String, language: String): String = when (value
     "LOG_ONLY" -> if (language == "en") "Log only" else "فقط ثبت گزارش"
     else -> value
 }
+
+private const val TAG = "Blocker2.ActivityLog"
 
 private fun outcomeLabel(value: String, language: String): String = when (value.uppercase(Locale.ROOT)) {
     "DETECTED" -> if (language == "en") "Detected" else "شناسایی شد"
