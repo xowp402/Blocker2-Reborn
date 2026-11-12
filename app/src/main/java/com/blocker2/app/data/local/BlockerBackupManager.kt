@@ -87,7 +87,7 @@ object BlockerBackupManager {
             // session. Check inside the same transaction as the table replacement so
             // a commitment started concurrently cannot be overwritten by this import.
             val activeCommitment = database.commitmentSessionDao().getSession()
-            if (activeCommitment != null && activeCommitment.expiresAt > System.currentTimeMillis()) {
+            if (BackupRestorePolicy.blocksRestore(activeCommitment?.expiresAt, System.currentTimeMillis())) {
                 throw IOException("بازیابی پشتیبان تا پایان حالت تعهد امکان‌پذیر نیست.")
             }
 
