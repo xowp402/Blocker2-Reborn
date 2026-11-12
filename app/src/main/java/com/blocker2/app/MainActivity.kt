@@ -28,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -51,6 +53,7 @@ import com.blocker2.app.ui.theme.Blocker2Theme
 import com.blocker2.app.vpn.LocalDnsVpnService
 import com.blocker2.app.accessibility.AccessibilityMonitorService
 import com.blocker2.app.startup.StartupPreferences
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     private var accessibilityPermissionEnabled by mutableStateOf(false)
@@ -189,7 +192,17 @@ private fun Blocker2App(
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application
     val commitmentSession by appContext.database.commitmentSessionDao()
         .observeSession().collectAsState(initial = null)
-    val commitmentActive = commitmentSession?.expiresAt?.let { it > System.currentTimeMillis() } == true
+    // Room emits when a session changes, not merely when its expiry timestamp passes.
+    // Schedule a one-shot UI refresh at the deadline so the Apps section unlocks on time.
+    var commitmentClock by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(commitmentSession?.expiresAt) {
+        val expiry = commitmentSession?.expiresAt
+        if (expiry != null && expiry > commitmentClock) {
+            delay(expiry - commitmentClock)
+            commitmentClock = System.currentTimeMillis()
+        }
+    }
+    val commitmentActive = commitmentSession?.expiresAt?.let { it > commitmentClock } == true
     val accessibilityConnected by AccessibilityMonitorService.connectionState.collectAsState()
     val dnsVpnConnected by LocalDnsVpnService.connectionState.collectAsState()
     val monitoredApps by appContext.database.monitoredAppDao().observeMonitored().collectAsState(initial = emptyList())
