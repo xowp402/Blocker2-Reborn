@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.blocker2.app.ui.CommitmentScreen
+import com.blocker2.app.ui.BackupScreen
 import com.blocker2.app.ui.ActiveBlocksScreen
 import com.blocker2.app.ui.ActivityLogScreen
 import com.blocker2.app.ui.MonitoredAppsScreen
@@ -282,7 +283,7 @@ private fun Blocker2App(
                     MainSection.COMMITMENT -> CommitmentScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
                             .database.commitmentSessionDao()
-                    ),
+                    )
                     MainSection.BACKUP -> BackupScreen(database = appContext.database)
                 }
             }
