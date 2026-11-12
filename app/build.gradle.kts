@@ -90,6 +90,7 @@ dependencies {
     val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
+    implementation("com.google.code.gson:gson:2.13.2")
     kapt("androidx.room:room-compiler:$roomVersion")
     val composeBom = platform("androidx.compose:compose-bom:2025.10.00")
     implementation(composeBom)
