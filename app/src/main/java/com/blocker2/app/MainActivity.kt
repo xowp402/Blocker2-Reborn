@@ -32,6 +32,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -124,6 +126,9 @@ class MainActivity : ComponentActivity() {
                 "dark" -> true
                 else -> androidx.compose.foundation.isSystemInDarkTheme()
             }) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalLayoutDirection provides if (appLanguage == "en") LayoutDirection.Ltr else LayoutDirection.Rtl
+                ) {
                 Blocker2App(
                     language = appLanguage,
                     themeMode = appThemeMode,
@@ -148,6 +153,7 @@ class MainActivity : ComponentActivity() {
                         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     }
                 )
+                }
             }
         }
     }
@@ -245,6 +251,7 @@ private fun Blocker2App(
 
                 when (sections[selectedSection]) {
                     MainSection.HOME -> HomeOverview(
+                        language = language,
                         showNotificationPermissionButton = showNotificationPermissionButton,
                         accessibilityPermissionEnabled = accessibilityPermissionEnabled,
                         accessibilityConnected = accessibilityConnected,
@@ -284,9 +291,9 @@ private fun Blocker2App(
                                     modifier = Modifier.padding(18.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text("تنظیمات برنامه‌ها موقتاً قفل است", fontWeight = FontWeight.Bold)
+                                    Text(if (language == "en") "App settings are temporarily locked" else "تنظیمات برنامه‌ها موقتاً قفل است", fontWeight = FontWeight.Bold)
                                     Text(
-                                        "تا پایان حالت تعهد نمی‌توانی فهرست برنامه‌های تحت نظارت یا دسته‌بندی آن‌ها را تغییر بدهی. برای خروج زودهنگام، فقط از بخش «تعهد» و فرایند خروج اضطراری استفاده کن.",
+                                        if (language == "en") "You cannot change monitored apps or their categories until commitment ends. To leave early, use the emergency-exit process in the Commitment section." else "تا پایان حالت تعهد نمی‌توانی فهرست برنامه‌های تحت نظارت یا دسته‌بندی آن‌ها را تغییر بدهی. برای خروج زودهنگام، فقط از بخش «تعهد» و فرایند خروج اضطراری استفاده کن.",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -362,6 +369,7 @@ private fun MainSection.englishSubtitle(): String = when (this) {
 
 @androidx.compose.runtime.Composable
 private fun HomeOverview(
+    language: String,
     showNotificationPermissionButton: Boolean,
     accessibilityPermissionEnabled: Boolean,
     accessibilityConnected: Boolean,
@@ -373,67 +381,27 @@ private fun HomeOverview(
     onRequestNotifications: () -> Unit,
     onOpenAccessibilitySettings: () -> Unit
 ) {
+    val english = language == "en"
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        StatusCard(
-            title = "قوانین فعال واژه‌ها",
-            status = "$enabledWordRuleCount قانون واژه‌ای فعال است. اجرای آن به اتصال سرویس دسترس‌پذیری و انتخاب برنامه‌های هدف وابسته است."
-        )
-        StatusCard(
-            title = "قوانین فعال تلگرام",
-            status = "$enabledTelegramRuleCount قانون تلگرام فعال است؛ شناسایی فقط بر اساس متن قابل مشاهده برای Accessibility انجام می‌شود."
-        )
-        StatusCard(
-            title = "قوانین مسدودسازی سایت",
-            status = "$enabledSiteRuleCount قانون مسدودسازی سایت فعال است. اجرای آن به اتصال VPN محلی وابسته است."
-        )
-        StatusCard(
-            title = "سرویس دسترس‌پذیری",
-            status = if (accessibilityPermissionEnabled) "مجوز دسترس‌پذیری در تنظیمات اندروید فعال است." else "مجوز دسترس‌پذیری هنوز فعال نشده است."
-        )
-        StatusCard(
-            title = "اتصال زندهٔ سرویس",
-            status = if (accessibilityConnected) "سرویس Accessibility به سیستم متصل است." else "سرویس در حال حاضر اتصال تأییدشده ندارد. فعال بودن مجوز به‌تنهایی به معنی اتصال سرویس نیست."
-        )
-        StatusCard(
-            title = "برنامه‌های تحت نظارت",
-            status = "$enabledMonitoredAppCount برنامه برای پایش انتخاب و فعال شده‌اند. این عدد تعداد برنامه‌های انتخاب‌شده است، نه برنامهٔ در حال اجرا."
-        )
-        Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
-            Text("بازکردن تنظیمات دسترس‌پذیری")
-        }
+        StatusCard(if (english) "Active word rules" else "قوانین فعال واژه‌ها", if (english) "$enabledWordRuleCount word rules are enabled. Enforcement requires Accessibility connection and selected target apps." else "$enabledWordRuleCount قانون واژه‌ای فعال است. اجرای آن به اتصال سرویس دسترس‌پذیری و انتخاب برنامه‌های هدف وابسته است.")
+        StatusCard(if (english) "Active Telegram rules" else "قوانین فعال تلگرام", if (english) "$enabledTelegramRuleCount Telegram rules are enabled. Detection is limited to text visible to Accessibility." else "$enabledTelegramRuleCount قانون تلگرام فعال است؛ شناسایی فقط بر اساس متن قابل مشاهده برای Accessibility انجام می‌شود.")
+        StatusCard(if (english) "Blocked-site rules" else "قوانین مسدودسازی سایت", if (english) "$enabledSiteRuleCount site rules are enabled. Enforcement requires the local VPN connection." else "$enabledSiteRuleCount قانون مسدودسازی سایت فعال است. اجرای آن به اتصال VPN محلی وابسته است.")
+        StatusCard(if (english) "Accessibility permission" else "سرویس دسترس‌پذیری", if (accessibilityPermissionEnabled) { if (english) "Permission is enabled in Android settings." else "مجوز دسترس‌پذیری در تنظیمات اندروید فعال است." } else { if (english) "Permission is not enabled yet." else "مجوز دسترس‌پذیری هنوز فعال نشده است." })
+        StatusCard(if (english) "Service connection" else "اتصال زندهٔ سرویس", if (accessibilityConnected) { if (english) "Accessibility service is connected." else "سرویس Accessibility به سیستم متصل است." } else { if (english) "Service connection is not confirmed. Permission alone does not mean the service is connected." else "سرویس در حال حاضر اتصال تأییدشده ندارد. فعال بودن مجوز به‌تنهایی به معنی اتصال سرویس نیست." })
+        StatusCard(if (english) "Monitored apps" else "برنامه‌های تحت نظارت", if (english) "$enabledMonitoredAppCount apps are selected and enabled for monitoring." else "$enabledMonitoredAppCount برنامه برای پایش انتخاب و فعال شده‌اند. این عدد تعداد برنامه‌های انتخاب‌شده است، نه برنامهٔ در حال اجرا.")
+        Button(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) { Text(if (english) "Open Accessibility settings" else "بازکردن تنظیمات دسترس‌پذیری") }
         if (showNotificationPermissionButton) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("اجازهٔ اعلان‌ها", fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "برای نمایش هشدار هنگام شروع مسدودسازی زمان‌دار، اجازهٔ اعلان‌ها را فعال کنید. مسدودسازی حتی بدون این اجازه نیز اجرا می‌شود.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Button(onClick = onRequestNotifications) {
-                        Text("فعال‌کردن اعلان‌ها")
-                    }
+            Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (english) "Notification permission" else "اجازهٔ اعلان‌ها", fontWeight = FontWeight.SemiBold)
+                    Text(if (english) "Allow notifications for timed-block alerts. Blocking still works without this permission." else "برای نمایش هشدار هنگام شروع مسدودسازی زمان‌دار، اجازهٔ اعلان‌ها را فعال کنید. مسدودسازی حتی بدون این اجازه نیز اجرا می‌شود.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(onClick = onRequestNotifications) { Text(if (english) "Enable notifications" else "فعال‌کردن اعلان‌ها") }
                 }
             }
         }
-        StatusCard(
-            title = "اتصال VPN محلی",
-            status = if (dnsVpnConnected) "تونل DNS محلی برقرار است." else "تونل DNS محلی متصل نیست؛ قوانین سایت در حال حاضر اعمال نمی‌شوند."
-        )
+        StatusCard(if (english) "Local VPN connection" else "اتصال VPN محلی", if (dnsVpnConnected) { if (english) "Local DNS tunnel is connected." else "تونل DNS محلی برقرار است." } else { if (english) "Local DNS tunnel is disconnected; site rules are not enforced." else "تونل DNS محلی متصل نیست؛ قوانین سایت در حال حاضر اعمال نمی‌شوند." })
         Spacer(modifier = Modifier.padding(2.dp))
-        Text(
-            text = if (accessibilityPermissionEnabled) "مجوز دسترس‌پذیری فعال است. برای شروع پایش، برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن." else "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. پس از بازگشت به برنامه، وضعیت مجوز به‌روزرسانی می‌شود.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(text = if (accessibilityPermissionEnabled) { if (english) "Accessibility permission is enabled. Select apps to monitor in the Apps section." else "مجوز دسترس‌پذیری فعال است. برای شروع پایش، برنامه‌های موردنظر را در بخش «برنامه‌ها» انتخاب کن." } else { if (english) "To enable word filtering, turn on Accessibility in Android settings. Status refreshes when you return." else "برای فعال‌سازی فیلتر واژه‌ها، مجوز دسترس‌پذیری را در تنظیمات اندروید روشن کن. پس از بازگشت به برنامه، وضعیت مجوز به‌روزرسانی می‌شود." }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

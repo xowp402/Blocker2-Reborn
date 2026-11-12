@@ -85,7 +85,7 @@ fun SettingsScreen(
             }
         }
         Text(
-            if (english) "Note: the language choice currently translates the main navigation and settings. The remaining feature screens are being localized in subsequent updates." else "نکته: در این مرحله انتخاب زبان، منوی اصلی و صفحهٔ تنظیمات را تغییر می‌دهد. ترجمهٔ بخش‌های دیگر برنامه در به‌روزرسانی‌های بعدی تکمیل می‌شود.",
+            if (english) "The main navigation, dashboard and settings are available in English. Other feature screens are being translated in stages." else "منوی اصلی، داشبورد و تنظیمات به فارسی و انگلیسی در دسترس‌اند. ترجمهٔ سایر بخش‌ها به‌تدریج تکمیل می‌شود.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
