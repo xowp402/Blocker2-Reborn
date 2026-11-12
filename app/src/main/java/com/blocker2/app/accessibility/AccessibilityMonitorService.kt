@@ -131,7 +131,11 @@ class AccessibilityMonitorService : AccessibilityService() {
             return
         }
 
-        val commitment = app.database.commitmentSessionDao().getSession()
+        val commitment = runCatching { app.database.commitmentSessionDao().getSession() }
+            .onFailure { error ->
+                Log.e(TAG, "Could not read commitment state; continuing independent word enforcement", error)
+            }
+            .getOrNull()
         if (commitment != null && commitment.expiresAt > now) {
             // Enforce the commitment before attempting any best-effort analytics write.
             // A full disk or database error must never prevent the HOME action.
@@ -163,7 +167,8 @@ class AccessibilityMonitorService : AccessibilityService() {
             return
         }
         if (commitment != null && commitment.expiresAt <= now) {
-            app.database.commitmentSessionDao().endSession()
+            runCatching { app.database.commitmentSessionDao().endSession() }
+                .onFailure { error -> Log.w(TAG, "Could not clear expired commitment session", error) }
         }
         val rules = app.wordRules.observeEnabled().first()
         // An existing timed block remains enforced even if this snapshot no longer
