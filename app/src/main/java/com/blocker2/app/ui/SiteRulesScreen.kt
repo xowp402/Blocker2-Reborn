@@ -192,7 +192,7 @@ fun SiteRulesScreen(dao: SiteRuleDao, onStartVpn: () -> Unit, onStopVpn: () -> U
                 Button(onClick = {
                     scope.launch { dao.deleteAllowedSite(item.id) }
                     deletingAllowed = null
-                }) { Text("حذف") }
+                }) { Text(if (english) "Delete" else "حذف") }
             },
             dismissButton = { TextButton(onClick = { deletingAllowed = null }) { Text(if (english) "Cancel" else "انصراف") } }
         )
