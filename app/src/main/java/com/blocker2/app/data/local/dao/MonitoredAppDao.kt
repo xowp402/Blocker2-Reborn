@@ -1,6 +1,8 @@
 package com.blocker2.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.blocker2.app.data.local.entity.MonitoredAppEntity
@@ -25,4 +27,13 @@ interface MonitoredAppDao {
 
     @Query("DELETE FROM monitored_apps WHERE packageName = :packageName")
     suspend fun delete(packageName: String): Int
+    @Query("SELECT * FROM monitored_apps")
+    suspend fun exportAll(): List<MonitoredAppEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<MonitoredAppEntity>)
+
+    @Query("DELETE FROM monitored_apps")
+    suspend fun clearForImport()
+
 }

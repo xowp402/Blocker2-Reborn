@@ -1,6 +1,8 @@
 package com.blocker2.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.blocker2.app.data.local.entity.WordRuleEntity
@@ -34,4 +36,13 @@ interface WordRuleDao {
 
     @Query("SELECT COUNT(*) FROM word_rules WHERE enabled = 1")
     fun observeEnabledCount(): Flow<Int>
+    @Query("SELECT * FROM word_rules")
+    suspend fun exportAll(): List<WordRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<WordRuleEntity>)
+
+    @Query("DELETE FROM word_rules")
+    suspend fun clearForImport()
+
 }

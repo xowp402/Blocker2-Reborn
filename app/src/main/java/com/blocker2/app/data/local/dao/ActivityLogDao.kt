@@ -26,4 +26,13 @@ interface ActivityLogDao {
 
     @Query("DELETE FROM activity_logs")
     suspend fun clearAll(): Int
+    @Query("SELECT * FROM activity_logs")
+    suspend fun exportAll(): List<ActivityLogEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<ActivityLogEntity>)
+
+    @Query("DELETE FROM activity_logs")
+    suspend fun clearForImport()
+
 }

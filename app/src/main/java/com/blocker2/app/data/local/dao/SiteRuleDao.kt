@@ -1,6 +1,8 @@
 package com.blocker2.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.blocker2.app.data.local.entity.AllowedSiteEntity
@@ -24,6 +26,15 @@ interface SiteRuleDao {
     @Query("DELETE FROM site_rules WHERE id = :id")
     suspend fun deleteBlockedSite(id: Long): Int
 
+    @Query("SELECT * FROM allowed_sites")
+    suspend fun exportAllowedSites(): List<AllowedSiteEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAllowedSites(items: List<AllowedSiteEntity>)
+
+    @Query("DELETE FROM allowed_sites")
+    suspend fun clearAllowedSitesForImport()
+
     @Query("SELECT * FROM allowed_sites ORDER BY createdAt DESC")
     fun observeAllowedSites(): Flow<List<AllowedSiteEntity>>
 
@@ -32,4 +43,13 @@ interface SiteRuleDao {
 
     @Query("DELETE FROM allowed_sites WHERE id = :id")
     suspend fun deleteAllowedSite(id: Long): Int
+    @Query("SELECT * FROM site_rules")
+    suspend fun exportAll(): List<SiteRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<SiteRuleEntity>)
+
+    @Query("DELETE FROM site_rules")
+    suspend fun clearForImport()
+
 }

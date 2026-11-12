@@ -1,6 +1,8 @@
 package com.blocker2.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.blocker2.app.data.local.entity.ActiveAppBlockEntity
@@ -37,4 +39,13 @@ interface ActiveAppBlockDao {
 
     @Query("DELETE FROM active_app_blocks")
     suspend fun clearAll(): Int
+    @Query("SELECT * FROM active_app_blocks")
+    suspend fun exportAll(): List<ActiveAppBlockEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<ActiveAppBlockEntity>)
+
+    @Query("DELETE FROM active_app_blocks")
+    suspend fun clearForImport()
+
 }

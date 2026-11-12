@@ -20,4 +20,13 @@ interface CommitmentSessionDao {
 
     @Query("DELETE FROM commitment_session WHERE id = 1")
     suspend fun endSession(): Int
+    @Query("SELECT * FROM commitment_session")
+    suspend fun exportAll(): List<CommitmentSessionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<CommitmentSessionEntity>)
+
+    @Query("DELETE FROM commitment_session")
+    suspend fun clearForImport()
+
 }

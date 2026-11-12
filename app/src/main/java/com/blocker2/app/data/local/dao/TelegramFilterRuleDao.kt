@@ -1,6 +1,8 @@
 package com.blocker2.app.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 import com.blocker2.app.data.local.entity.TelegramFilterRuleEntity
@@ -25,4 +27,13 @@ interface TelegramFilterRuleDao {
 
     @Query("DELETE FROM telegram_filter_rules WHERE id = :id")
     suspend fun deleteById(id: Long): Int
+    @Query("SELECT * FROM telegram_filter_rules")
+    suspend fun exportAll(): List<TelegramFilterRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun importAll(items: List<TelegramFilterRuleEntity>)
+
+    @Query("DELETE FROM telegram_filter_rules")
+    suspend fun clearForImport()
+
 }
