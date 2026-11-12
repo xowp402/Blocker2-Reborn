@@ -38,13 +38,24 @@ class TelegramRuleMatcherTest {
 
     @Test
     fun channelUrlMatchingIsCaseInsensitiveAndAllowsTrailingPunctuation() {
-        assertTrue(
-            TelegramRuleMatcher.matches(
-                "لینک: HTTPS://T.ME/Example_Channel!",
-                "CHANNEL_URL",
-                "https://t.me/example_channel"
-            )
-        )
+        assertTrue(TelegramRuleMatcher.matches("لینک: HTTPS://T.ME/Example_Channel!", "CHANNEL_URL", "https://t.me/example_channel"))
+    }
+
+    @Test
+    fun channelUrlMatchesWhenDisplayedWithoutScheme() {
+        assertTrue(TelegramRuleMatcher.matches("کانال: t.me/example_channel", "CHANNEL_URL", "https://t.me/example_channel"))
+        assertTrue(TelegramRuleMatcher.matches("کانال: https://t.me/example_channel", "CHANNEL_URL", "t.me/example_channel"))
+    }
+
+    @Test
+    fun channelUrlMatchesWithOptionalWwwPrefix() {
+        assertTrue(TelegramRuleMatcher.matches("www.t.me/example_channel", "CHANNEL_URL", "https://t.me/example_channel"))
+        assertTrue(TelegramRuleMatcher.matches("t.me/example_channel", "CHANNEL_URL", "https://www.t.me/example_channel"))
+    }
+
+    @Test
+    fun channelUrlStillRejectsDifferentChannelSuffix() {
+        assertFalse(TelegramRuleMatcher.matches("t.me/example_channel_extra", "CHANNEL_URL", "https://t.me/example_channel"))
     }
 
     @Test

@@ -9,7 +9,7 @@ internal object TelegramRuleMatcher {
     fun matches(snapshot: String, ruleType: String, ruleValue: String): Boolean {
         if (snapshot.isBlank() || ruleValue.isBlank()) return false
 
-        return when (ruleType.uppercase()) {
+        return when (ruleType.trim().uppercase()) {
             "WORD" -> RuleMatcher.matches(snapshot, ruleValue, RuleMatchMode.NORMALIZED_WORD)
             "PHRASE", "CHANNEL_ID" ->
                 RuleMatcher.matches(snapshot, ruleValue, RuleMatchMode.PHRASE)
@@ -27,16 +27,34 @@ internal object TelegramRuleMatcher {
 
     private fun matchesUrl(snapshot: String, ruleValue: String): Boolean {
         val normalizedSnapshot = WordNormalizer.normalize(snapshot)
-        val normalizedUrl = WordNormalizer.normalize(ruleValue)
+        val normalizedUrl = canonicalUrl(ruleValue)
         if (normalizedUrl.isBlank()) return false
 
+        // Telegram may display the same link with or without a scheme or www prefix.
+        // Check both host forms while retaining strict URL-character boundaries.
+        val candidates = linkedSetOf(normalizedUrl, normalizedUrl.removePrefix("www."))
+        candidates += "www.${normalizedUrl.removePrefix("www.")}"
+
+        return candidates.any { candidate ->
+            hasBoundedUrlOccurrence(normalizedSnapshot, candidate)
+        }
+    }
+
+    private fun canonicalUrl(value: String): String {
+        return WordNormalizer.normalize(value)
+            .replace(Regex("^(?:https?://)?"), "")
+            .removePrefix("www.")
+    }
+
+    private fun hasBoundedUrlOccurrence(snapshot: String, url: String): Boolean {
+        if (url.isBlank()) return false
         var from = 0
-        while (from <= normalizedSnapshot.length - normalizedUrl.length) {
-            val index = normalizedSnapshot.indexOf(normalizedUrl, from)
+        while (from <= snapshot.length - url.length) {
+            val index = snapshot.indexOf(url, from)
             if (index < 0) return false
-            val end = index + normalizedUrl.length
-            val leftBoundary = index == 0 || !isUrlCharacter(normalizedSnapshot[index - 1])
-            val rightBoundary = end == normalizedSnapshot.length || !isUrlCharacter(normalizedSnapshot[end])
+            val end = index + url.length
+            val leftBoundary = index == 0 || !isUrlCharacter(snapshot[index - 1])
+            val rightBoundary = end == snapshot.length || !isUrlCharacter(snapshot[end])
             if (leftBoundary && rightBoundary) return true
             from = index + 1
         }
