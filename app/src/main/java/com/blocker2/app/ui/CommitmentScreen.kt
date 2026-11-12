@@ -56,6 +56,7 @@ fun CommitmentScreen(dao: CommitmentSessionDao, language: String) {
     var showEmergencyWarning by remember { mutableStateOf(false) }
     var showEmergencyFinal by remember { mutableStateOf(false) }
     var acknowledgedEmergency by remember { mutableStateOf(false) }
+    var operationError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -71,6 +72,9 @@ fun CommitmentScreen(dao: CommitmentSessionDao, language: String) {
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(if (english) "Personal commitment" else "حالت تعهد شخصی", style = MaterialTheme.typography.headlineSmall)
+        operationError?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        }
         Text(
             if (english) "During commitment, apps enabled for monitoring are restricted. Blocker2 is excluded so you can manage the session." else "در طول تعهد، برنامه‌هایی که در بخش «برنامه‌ها» برای نظارت فعال کرده‌ای، محدود می‌شوند. Blocker2 برای مدیریت جلسه از این محدودیت مستثناست.",
             style = MaterialTheme.typography.bodyMedium,
@@ -151,14 +155,24 @@ fun CommitmentScreen(dao: CommitmentSessionDao, language: String) {
                 TextButton(onClick = {
                     val started = System.currentTimeMillis()
                     scope.launch {
-                        dao.saveSession(
-                            CommitmentSessionEntity(
-                                startedAt = started,
-                                expiresAt = TimedBlockExpiry.calculate(started, selectedDuration)
+                        runCatching {
+                            dao.saveSession(
+                                CommitmentSessionEntity(
+                                    startedAt = started,
+                                    expiresAt = TimedBlockExpiry.calculate(started, selectedDuration)
+                                )
                             )
-                        )
+                        }.onSuccess {
+                            operationError = null
+                            showStartConfirmation = false
+                        }.onFailure {
+                            operationError = if (english) {
+                                "Could not start commitment. Your session was not saved."
+                            } else {
+                                "شروع تعهد انجام نشد؛ جلسه در حافظه ذخیره نشد."
+                            }
+                        }
                     }
-                    showStartConfirmation = false
                 }) { Text(if (english) "Confirm and start" else "تأیید و شروع") }
             },
             dismissButton = {
@@ -205,8 +219,20 @@ fun CommitmentScreen(dao: CommitmentSessionDao, language: String) {
             text = { Text(if (english) "Are you sure you want to end this commitment now? This cannot be undone." else "آیا مطمئنی که می‌خواهی جلسه تعهد را همین حالا پایان بدهی؟ این عمل قابل بازگردانی نیست.") },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch { dao.endSession() }
-                    showEmergencyFinal = false
+                    scope.launch {
+                        runCatching { dao.endSession() }
+                            .onSuccess {
+                                operationError = null
+                                showEmergencyFinal = false
+                            }
+                            .onFailure {
+                                operationError = if (english) {
+                                    "Could not end commitment. The active session may still be enforced."
+                                } else {
+                                    "پایان تعهد ثبت نشد؛ ممکن است محدودیت همچنان فعال باشد."
+                                }
+                            }
+                    }
                 }) { Text(if (english) "Yes, end commitment" else "بله، پایان تعهد") }
             },
             dismissButton = {
