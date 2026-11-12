@@ -8,6 +8,8 @@
     <string name="dns_notification_text">فقط درخواست‌های DNS دامنه‌ها بررسی می‌شوند.</string>
     <string name="dns_notification_channel">فیلتر سایت‌ها</string>
     <string name="stop">توقف</string>
+    <string name="block_notification_channel">مسدودسازی برنامه‌ها</string>
+    <string name="block_notification_channel_description">اعلان هنگام شروع مسدودسازی زمان‌دار برنامه‌ها</string>
     <string name="block_notification_title">Blocker2؛ برنامه موقتاً مسدود شد</string>
     <string name="block_notification_text">برای حفظ تمرکز، دسترسی به این برنامه محدود شده است.</string>
     <string name="block_notification_big_text">برای حفظ تمرکز، دسترسی به این برنامه تا پایان زمان تعیین‌شده محدود شده است. زمان باقی‌مانده هنگام فعال‌سازی: حدود %1$d دقیقه.</string>

@@ -19,7 +19,6 @@ import com.blocker2.app.MainActivity
  */
 object BlockNotificationManager {
     private const val CHANNEL_ID = "active_app_blocks"
-    private const val CHANNEL_NAME = "Blocker2 active app blocks"
     private const val NOTIFICATION_ID_BASE = 20_000
 
     fun showTimedBlock(
@@ -83,10 +82,10 @@ object BlockNotificationManager {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            CHANNEL_NAME,
+            context.getString(com.blocker2.app.R.string.block_notification_channel),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "اعلان هنگام شروع مسدودسازی زمان‌دار برنامه‌ها"
+            description = context.getString(com.blocker2.app.R.string.block_notification_channel_description)
         }
         context.getSystemService(NotificationManager::class.java)
             ?.createNotificationChannel(channel)

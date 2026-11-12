@@ -8,6 +8,8 @@
     <string name="dns_notification_text">Only domain DNS requests are inspected.</string>
     <string name="dns_notification_channel">Site filtering</string>
     <string name="stop">Stop</string>
+    <string name="block_notification_channel">App blocking</string>
+    <string name="block_notification_channel_description">Notifications when a timed app block starts</string>
     <string name="block_notification_title">Blocker2 temporarily blocked an app</string>
     <string name="block_notification_text">Access to this app is limited to help you stay focused.</string>
     <string name="block_notification_big_text">To help you stay focused, access to this app is limited until the selected time ends. Remaining time when activated: about %1$d minutes.</string>
