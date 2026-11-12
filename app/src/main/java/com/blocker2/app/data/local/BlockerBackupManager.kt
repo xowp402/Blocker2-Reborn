@@ -83,6 +83,14 @@ object BlockerBackupManager {
         }
 
         database.withTransaction {
+            // Restoring an older backup must not cancel or replace a live commitment
+            // session. Check inside the same transaction as the table replacement so
+            // a commitment started concurrently cannot be overwritten by this import.
+            val activeCommitment = database.commitmentSessionDao().getSession()
+            if (activeCommitment != null && activeCommitment.expiresAt > System.currentTimeMillis()) {
+                throw IOException("بازیابی پشتیبان تا پایان حالت تعهد امکان‌پذیر نیست.")
+            }
+
             database.wordRuleDao().clearForImport()
             database.telegramFilterRuleDao().clearForImport()
             database.siteRuleDao().clearForImport()
