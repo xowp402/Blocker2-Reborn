@@ -52,6 +52,8 @@ import com.blocker2.app.startup.StartupPreferences
 
 class MainActivity : ComponentActivity() {
     private var accessibilityPermissionEnabled by mutableStateOf(false)
+    private var appThemeMode by mutableStateOf("system")
+    private var appLanguage by mutableStateOf("fa")
 
     private fun refreshAccessibilityStatus() {
         val expected = ComponentName(this, AccessibilityMonitorService::class.java)
@@ -106,6 +108,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         refreshAccessibilityStatus()
+        val preferences = getSharedPreferences("blocker2_app_preferences", MODE_PRIVATE)
+        appThemeMode = preferences.getString("theme_mode", "system") ?: "system"
+        appLanguage = preferences.getString("language", "fa") ?: "fa"
         val needsNotificationPermission =
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(
@@ -114,8 +119,22 @@ class MainActivity : ComponentActivity() {
                 ) != PackageManager.PERMISSION_GRANTED
 
         setContent {
-            Blocker2Theme {
+            Blocker2Theme(darkTheme = when (appThemeMode) {
+                "light" -> false
+                "dark" -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }) {
                 Blocker2App(
+                    language = appLanguage,
+                    themeMode = appThemeMode,
+                    onLanguageChange = { value ->
+                        appLanguage = value
+                        preferences.edit().putString("language", value).apply()
+                    },
+                    onThemeChange = { value ->
+                        appThemeMode = value
+                        preferences.edit().putString("theme_mode", value).apply()
+                    },
                     showNotificationPermissionButton = needsNotificationPermission,
                     accessibilityPermissionEnabled = accessibilityPermissionEnabled,
                     onRequestNotifications = {
@@ -143,11 +162,16 @@ private enum class MainSection(val title: String, val subtitle: String) {
     BLOCKS("مسدودی‌ها", "مشاهده و مدیریت برنامه‌های مسدودشده"),
     ACTIVITY("گزارش‌ها", "تاریخچهٔ شناسایی‌ها و واکنش‌ها"),
     COMMITMENT("تعهد", "حالت تعهد شخصی و خروج اضطراری"),
-    BACKUP("پشتیبان", "ذخیره و بازیابی اطلاعات")
+    BACKUP("پشتیبان", "ذخیره و بازیابی اطلاعات"),
+    SETTINGS("تنظیمات", "زبان و پوستهٔ برنامه")
 }
 
 @androidx.compose.runtime.Composable
 private fun Blocker2App(
+    language: String,
+    themeMode: String,
+    onLanguageChange: (String) -> Unit,
+    onThemeChange: (String) -> Unit,
     showNotificationPermissionButton: Boolean,
     accessibilityPermissionEnabled: Boolean,
     onRequestNotifications: () -> Unit,
@@ -189,7 +213,7 @@ private fun Blocker2App(
                         letterSpacing = 1.4.sp
                     )
                     Text(
-                        text = "کنترل آگاهانه، تمرکز بیشتر",
+                        text = if (language == "en") "Mindful control, better focus" else "کنترل آگاهانه، تمرکز بیشتر",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -209,12 +233,12 @@ private fun Blocker2App(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = sections[selectedSection].title,
+                    text = if (language == "en") sections[selectedSection].englishTitle() else sections[selectedSection].title,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = sections[selectedSection].subtitle,
+                    text = if (language == "en") sections[selectedSection].englishSubtitle() else sections[selectedSection].subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -285,6 +309,12 @@ private fun Blocker2App(
                             .database.commitmentSessionDao()
                     )
                     MainSection.BACKUP -> BackupScreen(database = appContext.database)
+                    MainSection.SETTINGS -> com.blocker2.app.ui.SettingsScreen(
+                        language = language,
+                        themeMode = themeMode,
+                        onLanguageChange = onLanguageChange,
+                        onThemeChange = onThemeChange
+                    )
                 }
             }
 
@@ -295,12 +325,39 @@ private fun Blocker2App(
                         enabled = selectedSection == index || !(commitmentActive && section == MainSection.APPS),
                         onClick = { selectedSection = index },
                         icon = {},
-                        label = { Text(section.title) }
+                        label = { Text(if (language == "en") section.englishTitle() else section.title) }
                     )
                 }
             }
         }
     }
+}
+
+
+private fun MainSection.englishTitle(): String = when (this) {
+    MainSection.HOME -> "Home"
+    MainSection.WORDS -> "Words"
+    MainSection.TELEGRAM -> "Telegram"
+    MainSection.SITES -> "Sites"
+    MainSection.APPS -> "Apps"
+    MainSection.BLOCKS -> "Blocks"
+    MainSection.ACTIVITY -> "Activity"
+    MainSection.COMMITMENT -> "Commitment"
+    MainSection.BACKUP -> "Backup"
+    MainSection.SETTINGS -> "Settings"
+}
+
+private fun MainSection.englishSubtitle(): String = when (this) {
+    MainSection.HOME -> "Protection overview"
+    MainSection.WORDS -> "Manage words and phrases"
+    MainSection.TELEGRAM -> "Telegram words and channel filters"
+    MainSection.SITES -> "Manage domains and addresses"
+    MainSection.APPS -> "Choose monitored apps"
+    MainSection.BLOCKS -> "View and manage blocked apps"
+    MainSection.ACTIVITY -> "Detection and action history"
+    MainSection.COMMITMENT -> "Personal commitment mode"
+    MainSection.BACKUP -> "Save and restore your data"
+    MainSection.SETTINGS -> "Language and appearance"
 }
 
 @androidx.compose.runtime.Composable
