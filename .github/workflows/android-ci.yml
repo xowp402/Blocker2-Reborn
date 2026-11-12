@@ -68,6 +68,25 @@ jobs:
       - name: Build optimized Release APK
         run: gradle assembleRelease --no-daemon --stacktrace
 
+      - name: Check Release APK signature
+        if: success()
+        run: |
+          APK_PATH="$(find app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          if [ -z "$APK_PATH" ]; then
+            echo "::error::Release APK was not found."
+            exit 1
+          fi
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner is unavailable; Release APK signature was not checked."
+            echo "Release APK signature: NOT CHECKED (apksigner unavailable)." >> "$GITHUB_STEP_SUMMARY"
+          elif "$APKSIGNER" verify --verbose "$APK_PATH"; then
+            echo "Release APK signature: VERIFIED." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Release APK is unsigned or its signature could not be verified. Configure the BLOCKER2 signing secrets."
+            echo "Release APK signature: NOT VERIFIED. Configure BLOCKER2_KEYSTORE_BASE64, BLOCKER2_KEYSTORE_PASSWORD, BLOCKER2_KEY_ALIAS, and BLOCKER2_KEY_PASSWORD." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
