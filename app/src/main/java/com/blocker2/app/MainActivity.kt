@@ -308,8 +308,8 @@ private fun Blocker2App(
                             .database.activeAppBlockDao()
                     )
                     MainSection.ACTIVITY -> ActivityLogScreen(
-                        dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
-                            .database.activityLogDao()
+                        dao = appContext.database.activityLogDao(),
+                        language = language
                     )
                     MainSection.COMMITMENT -> CommitmentScreen(
                         dao = (androidx.compose.ui.platform.LocalContext.current.applicationContext as Blocker2Application)
