@@ -59,7 +59,11 @@ fun TelegramRulesScreen(dao: TelegramFilterRuleDao, language: String) {
             Button(onClick = { creating = true }) { Text(if (english) "Add" else "افزودن") }
         }
         Text(
-            "این فیلتر فقط هنگام پایش برنامه‌های تلگرام اجرا می‌شود. تشخیص به متن قابل مشاهده برای سرویس دسترس‌پذیری محدود است.",
+            if (english) {
+                "These filters run only while Telegram apps are monitored. Detection is limited to text visible to the Accessibility service."
+            } else {
+                "این فیلتر فقط هنگام پایش برنامه‌های تلگرام اجرا می‌شود. تشخیص به متن قابل مشاهده برای سرویس دسترس‌پذیری محدود است."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -232,11 +236,11 @@ private fun TelegramDropdown(label: String, expanded: Boolean, onExpanded: (Bool
 }
 
 private fun telegramTypeLabel(value: String, english: Boolean = false) = when (value) {
-    "WORD" -> "واژه"
-    "PHRASE" -> "عبارت"
-    "CHANNEL_URL" -> "لینک کانال"
-    "CHANNEL_ID" -> "شناسه کانال"
-    "USERNAME" -> "نام کاربری"
+    "WORD" -> if (english) "Word" else "واژه"
+    "PHRASE" -> if (english) "Phrase" else "عبارت"
+    "CHANNEL_URL" -> if (english) "Channel link" else "لینک کانال"
+    "CHANNEL_ID" -> if (english) "Channel ID" else "شناسه کانال"
+    "USERNAME" -> if (english) "Username" else "نام کاربری"
     else -> value
 }
 
